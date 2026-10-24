@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'EV_AI_android.zip'
+      - 'android/**'
       - '.github/workflows/build-apk.yml'
 
 permissions:
@@ -15,30 +15,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Unzip the app
-        run: unzip -q EV_AI_android.zip -d app_src
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+
       - uses: android-actions/setup-android@v3
+
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+
       - name: Build the APK
-        working-directory: app_src/android
+        working-directory: android
         run: gradle assembleDebug --no-daemon --stacktrace
+
       - name: Name the APK
-        run: cp app_src/android/app/build/outputs/apk/debug/app-debug.apk EV-AI.apk
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk EV-AI.apk
+
       - uses: actions/upload-artifact@v4
         with:
           name: EV-AI-apk
           path: EV-AI.apk
+
       - name: Publish as a download link
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-latest
           name: EV AI for Android (latest build)
-          body: Install EV-AI.apk on your phone.
+          body: Install EV-AI.apk on your phone. Built automatically from the android folder.
           files: EV-AI.apk
           prerelease: true

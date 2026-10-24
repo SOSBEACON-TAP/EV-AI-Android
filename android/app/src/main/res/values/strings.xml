@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">EV AI</string>
+    <string name="access_desc">EV AI uses this to press Send after it prepares a WhatsApp or email message, and to return to the home screen when Focus mode blocks an app.</string>
+</resources>
