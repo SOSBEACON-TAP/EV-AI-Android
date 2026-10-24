@@ -101,8 +101,10 @@ class FocusService : Service() {
     override fun onDestroy() { handler.removeCallbacks(tick); super.onDestroy() }
 
     private fun check() {
-        val pkg = Usage.foregroundPackage(this) ?: return
-        lastPkg = pkg
+        val seen = Usage.foregroundPackage(this)
+        if (seen != null) lastPkg = seen
+        val pkg = lastPkg
+        if (pkg.isEmpty()) return
         if (pkg !in blocked) return
         val now = System.currentTimeMillis()
         if (now - lastWarn < 2500) return

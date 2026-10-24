@@ -209,6 +209,8 @@ class CallService : Service() {
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED && Prefs.listen) CallService.start(context)
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
+        Reminders.restoreAll(context)
+        if (Prefs.listen) CallService.start(context)
     }
 }

@@ -51,6 +51,20 @@ object Reminders {
         return id
     }
 
+    /** After a reboot: put saved, still-future reminders back on the alarm clock. */
+    fun restoreAll(c: Context) {
+        val now = System.currentTimeMillis()
+        for (r in Store.reminders()) {
+            if (r.at <= now) { Store.removeReminder(r.id); continue }
+            val pi = PendingIntent.getBroadcast(
+                c, r.id, Intent(c, ReminderReceiver::class.java).putExtra("text", r.text).putExtra("id", r.id),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            val am = c.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, r.at, pi)
+        }
+    }
+
     fun cancel(c: Context, id: Int) {
         val pi = PendingIntent.getBroadcast(
             c, id, Intent(c, ReminderReceiver::class.java),

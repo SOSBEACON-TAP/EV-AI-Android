@@ -11,8 +11,16 @@ android {
         applicationId = "com.sosbeacon.evai"
         minSdk = 26
         targetSdk = 35
-        versionCode = 29
+        versionCode = 36
         versionName = "1.0.6"
+    }
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("ev-debug.keystore")
+            storePassword = "android"
+            keyAlias = "evdebug"
+            keyPassword = "android"
+        }
     }
     buildTypes {
         release { isMinifyEnabled = false }

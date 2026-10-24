@@ -66,6 +66,15 @@ fun EvRoot() {
     val scheme = if (dark) darkColorScheme(primary = accent, background = bg, surface = surface, onPrimary = Color.Black)
     else lightColorScheme(primary = accent, background = bg, surface = surface, onPrimary = Color.Black)
     val d = LocalDensity.current
+    val view = androidx.compose.ui.platform.LocalView.current
+    SideEffect {
+        val window = (view.context as? android.app.Activity)?.window
+        if (window != null) {
+            val ctl = androidx.core.view.WindowCompat.getInsetsController(window, view)
+            ctl.isAppearanceLightStatusBars = !dark
+            ctl.isAppearanceLightNavigationBars = !dark
+        }
+    }
     CompositionLocalProvider(LocalDensity provides Density(d.density, d.fontScale * Ui.fontScale / 100f)) {
         MaterialTheme(colorScheme = scheme) {
             var tab by remember { mutableIntStateOf(0) }

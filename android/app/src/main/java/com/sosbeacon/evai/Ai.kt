@@ -77,6 +77,24 @@ object Ai {
         return sb.toString()
     }
 
+    /** Only role, content and tool_calls go back: some providers (Groq, Gemini) reject extra fields like "reasoning". */
+    private fun cleanAssistant(msg: JSONObject): JSONObject {
+        val out = JSONObject().put("role", "assistant")
+        out.put("content", if (msg.isNull("content")) JSONObject.NULL else msg.optString("content", ""))
+        val calls = msg.optJSONArray("tool_calls")
+        if (calls != null) {
+            val clean = JSONArray()
+            for (i in 0 until calls.length()) {
+                val c = calls.getJSONObject(i)
+                val f = c.getJSONObject("function")
+                clean.put(JSONObject().put("id", c.getString("id")).put("type", "function")
+                    .put("function", JSONObject().put("name", f.getString("name")).put("arguments", f.optString("arguments", "{}"))))
+            }
+            out.put("tool_calls", clean)
+        }
+        return out
+    }
+
     private fun endpoint(): String {
         val base = if (Prefs.provider == "custom") Prefs.baseUrl else (BASES[Prefs.provider] ?: "")
         return base.trimEnd('/') + "/chat/completions"
@@ -124,7 +142,7 @@ object Ai {
                     history.add(JSONObject().put("role", "assistant").put("content", reply))
                     return@withContext reply.ifBlank { "Done." }
                 }
-                history.add(msg)
+                history.add(cleanAssistant(msg))
                 for (i in 0 until calls.length()) {
                     val call = calls.getJSONObject(i)
                     val fn = call.getJSONObject("function")
