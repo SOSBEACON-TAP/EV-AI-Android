@@ -51,6 +51,9 @@ class MainActivity : ComponentActivity() {
         } else wanted += Manifest.permission.READ_EXTERNAL_STORAGE
         if (!Prefs.introDone) { askPerms.launch(wanted.toTypedArray()); Prefs.introDone = true }
         if (Prefs.listen) CallService.start(this)
+        if (Prefs.autoUpdate && Updater.canInstall(this)) {
+            Thread { try { Updater.run(applicationContext) } catch (e: Exception) { } }.also { it.isDaemon = true; it.start() }
+        }
         setContent { EvRoot() }
     }
 }
@@ -433,7 +436,26 @@ fun SettingsScreen() {
                 ctx.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${ctx.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             }, modifier = Modifier.padding(top = 8.dp)) { Text("App permissions") }
         }
-        Text("EV AI for Android · 1.0.6 (build 29)", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f))
+        Section("Updates") {
+            var updMsg by remember { mutableStateOf(Prefs.updateNote) }
+            var auto by remember { mutableStateOf(Prefs.autoUpdate) }
+            val scope = rememberCoroutineScope()
+            Text("Installed build ${Updater.installedCode(ctx)}", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f))
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+                Switch(auto, { auto = it; Prefs.autoUpdate = it }); Spacer(Modifier.width(8.dp)); Text("Update automatically")
+            }
+            Button(onClick = {
+                if (!Updater.canInstall(ctx)) {
+                    updMsg = "Allow EV AI to install updates, then press Check again."
+                    ctx.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${ctx.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                } else {
+                    updMsg = "Checking…"
+                    scope.launch { updMsg = withContext(Dispatchers.IO) { Updater.run(ctx) } }
+                }
+            }, modifier = Modifier.padding(top = 8.dp)) { Text("Check for updates") }
+            if (updMsg.isNotEmpty()) Text(updMsg, Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.primary)
+        }
+        Text("EV AI for Android · 1.0.6", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f))
     }
 }
 

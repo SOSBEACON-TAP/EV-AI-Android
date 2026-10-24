@@ -28,9 +28,12 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Work out the build number
+        run: echo "BUILD=$((1000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+
       - name: Build the APK
         working-directory: android
-        run: gradle assembleDebug --no-daemon --stacktrace
+        run: gradle assembleDebug --no-daemon --stacktrace -PbuildNumber=$BUILD
 
       - name: Name the APK
         run: cp android/app/build/outputs/apk/debug/app-debug.apk EV-AI.apk
@@ -45,6 +48,6 @@ jobs:
         with:
           tag_name: android-latest
           name: EV AI for Android (latest build)
-          body: Install EV-AI.apk on your phone. Built automatically from the android folder.
+          body: "Install EV-AI.apk on your phone. versionCode: ${{ env.BUILD }}"
           files: EV-AI.apk
           prerelease: true

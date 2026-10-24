@@ -153,6 +153,7 @@ class CallService : Service() {
         if (!running) {
             running = true
             Thread { loop() }.also { it.isDaemon = true; it.start() }
+            Thread { updateLoop() }.also { it.isDaemon = true; it.start() }
         }
         return START_STICKY
     }
@@ -168,6 +169,22 @@ class CallService : Service() {
             } catch (e: Exception) { }
             try { Thread.sleep(wait) } catch (e: InterruptedException) { return }
             wait = minOf(wait * 2, 60_000L)
+        }
+    }
+
+    /** Every few hours, look for a newer build and install it (when auto-update is on). */
+    private fun updateLoop() {
+        while (running) {
+            try {
+                val now = System.currentTimeMillis()
+                if (Prefs.autoUpdate && now - Prefs.lastUpdateCheck > 6 * 3600 * 1000L) {
+                    Prefs.lastUpdateCheck = now
+                    Updater.run(applicationContext)
+                }
+                Thread.sleep(30 * 60 * 1000L)
+            } catch (e: InterruptedException) {
+                return
+            } catch (e: Exception) { }
         }
     }
 

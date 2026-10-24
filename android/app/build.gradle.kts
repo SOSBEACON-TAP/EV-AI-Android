@@ -11,7 +11,7 @@ android {
         applicationId = "com.sosbeacon.evai"
         minSdk = 26
         targetSdk = 35
-        versionCode = 36
+        versionCode = (project.findProperty("buildNumber") as String?)?.toIntOrNull() ?: 1000
         versionName = "1.0.6"
     }
     signingConfigs {
