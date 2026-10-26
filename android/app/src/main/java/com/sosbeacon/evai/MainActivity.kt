@@ -58,8 +58,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private val TABS = listOf("Chat", "Actions", "Focus", "Insights", "Files", "Computer", "Doctor", "Settings")
-
 @Composable
 fun EvRoot() {
     val accent = Ui.accentColor()
@@ -80,21 +78,29 @@ fun EvRoot() {
     }
     CompositionLocalProvider(LocalDensity provides Density(d.density, d.fontScale * Ui.fontScale / 100f)) {
         MaterialTheme(colorScheme = scheme) {
-            var tab by remember { mutableIntStateOf(0) }
-            Column(Modifier.fillMaxSize().background(bg).safeDrawingPadding()) {
-                ScrollableTabRow(selectedTabIndex = tab, containerColor = bg, edgePadding = 8.dp) {
-                    TABS.forEachIndexed { i, t -> Tab(selected = tab == i, onClick = { tab = i }, text = { Text(t) }) }
-                }
-                Box(Modifier.weight(1f).fillMaxWidth()) {
-                    when (tab) {
-                        0 -> ChatScreen()
-                        1 -> ActionsScreen()
-                        2 -> FocusScreen()
-                        3 -> InsightsScreen()
-                        4 -> FilesScreen()
-                        5 -> ComputerScreen()
-                        6 -> DoctorScreen { tab = 7 }
-                        else -> SettingsScreen()
+            var screen by remember { mutableStateOf("home") }
+            val dashBg = androidx.compose.ui.graphics.Brush.radialGradient(
+                listOf(if (Ui.jarvis) Color(0xFF1A1405) else Color(0xFF10131E),
+                    if (Ui.jarvis) Color(0xFF0E0A02) else Color(0xFF0A0C15), Color(0xFF05060A)))
+            val frameBg = if (screen == "home") Modifier.background(dashBg) else Modifier.background(bg)
+            Column(Modifier.fillMaxSize().then(frameBg).safeDrawingPadding()) {
+                if (screen == "home") Dashboard { screen = it }
+                else {
+                    androidx.activity.compose.BackHandler { screen = "home" }
+                    val title = when (screen) {
+                        "actions" -> "Quick Actions"; "focus" -> "Focus"; "insights" -> "App Insights"
+                        "files" -> "File Finder"; "computer" -> "Computer"; "doctor" -> "Error Doctor"; else -> "Settings"
+                    }
+                    ScreenFrame(title, { screen = "home" }) {
+                        when (screen) {
+                            "actions" -> ActionsScreen()
+                            "focus" -> FocusScreen()
+                            "insights" -> InsightsScreen()
+                            "files" -> FilesScreen()
+                            "computer" -> ComputerScreen()
+                            "doctor" -> DoctorScreen { screen = "settings" }
+                            else -> SettingsScreen()
+                        }
                     }
                 }
             }
@@ -105,63 +111,15 @@ fun EvRoot() {
 fun sendMessage(text: String, scope: CoroutineScope) {
     if (text.isBlank() || Ui.busy) return
     Ui.messages.add(Ui.Msg(true, text.trim()))
-    Ui.busy = true; Ui.status = "Thinking…"
+    Ui.busy = true; Ui.status = "Thinking…"; Ui.coreState = CoreState.THINKING
     scope.launch {
-        val reply = Ai.chat(text.trim()) { Ui.status = "Using ${it.replace('_', ' ')}…" }
+        val reply = Ai.chat(text.trim()) { Ui.status = "Using ${it.replace('_', ' ')}…"; Ui.coreState = CoreState.EXECUTING }
         Ui.messages.add(Ui.Msg(false, reply))
         Ui.busy = false; Ui.status = ""
         if (Prefs.speak) Voice.speak(reply)
-    }
-}
-
-@Composable
-fun ChatScreen() {
-    val scope = rememberCoroutineScope()
-    var input by remember { mutableStateOf("") }
-    val list = rememberLazyListState()
-    val mic = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
-        val said = r.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
-        if (!said.isNullOrBlank()) sendMessage(said, scope)
-    }
-    LaunchedEffect(Ui.messages.size) { if (Ui.messages.isNotEmpty()) list.animateScrollToItem(Ui.messages.size - 1) }
-    Column(Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
-        if (Ui.messages.isEmpty()) {
-            Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("EV AI", fontSize = 34.sp, color = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.height(8.dp))
-                Text("Try: call mom · set a timer for 10 minutes · open YouTube · what's my battery · send WhatsApp to Alex saying I'm on my way",
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), modifier = Modifier.padding(24.dp))
-            }
-        } else {
-            LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = list, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(Ui.messages) { m ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = if (m.fromUser) Arrangement.End else Arrangement.Start) {
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = if (m.fromUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-                            modifier = Modifier.widthIn(max = 300.dp),
-                        ) {
-                            Text(m.text, Modifier.padding(12.dp),
-                                color = if (m.fromUser) Color.Black else MaterialTheme.colorScheme.onSurface)
-                        }
-                    }
-                }
-            }
-        }
-        if (Ui.status.isNotEmpty()) Text(Ui.status, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(4.dp))
-        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(input, { input = it }, Modifier.weight(1f), placeholder = { Text("Ask EV…") }, maxLines = 4)
-            Spacer(Modifier.width(6.dp))
-            Button(onClick = {
-                try {
-                    mic.launch(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-                        .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                        .putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to EV"))
-                } catch (e: Exception) { Ui.messages.add(Ui.Msg(false, "Voice input isn't available on this phone.")) }
-            }) { Text("Mic") }
-            Spacer(Modifier.width(6.dp))
-            Button(onClick = { sendMessage(input, scope); input = "" }, enabled = !Ui.busy) { Text("Send") }
-        }
+        Ui.coreState = CoreState.SPEAKING
+        kotlinx.coroutines.delay((reply.length * 55L).coerceIn(1200L, 7000L))
+        if (!Ui.busy) Ui.coreState = CoreState.IDLE
     }
 }
 

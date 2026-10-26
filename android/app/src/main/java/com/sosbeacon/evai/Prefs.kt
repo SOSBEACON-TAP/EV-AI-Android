@@ -47,6 +47,7 @@ object Prefs {
     var server by StrPref("alert_server", "https://ntfy.sh")
     var listen by BoolPref("listen", true)
     var lastSeen by LongPref("last_seen", 0L)
+    var jarvis by BoolPref("jarvis", false)
     var autoUpdate by BoolPref("auto_update", true)
     var lastUpdateCheck by LongPref("last_update_check", 0L)
     var updateNote by StrPref("update_note", "")

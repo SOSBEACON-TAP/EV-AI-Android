@@ -35,6 +35,7 @@
 
         <activity
             android:name=".MainActivity"
+            android:screenOrientation="sensorLandscape"
             android:exported="true"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>

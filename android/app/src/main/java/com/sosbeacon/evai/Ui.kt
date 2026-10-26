@@ -7,7 +7,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 
 /** Observable look-and-feel + chat state shared by the screens. */
+enum class CoreState(val hex: Long, val speed: Float, val label: String) {
+    IDLE(0xFF3AA0C8, 0.4f, "IDLE"),
+    LISTENING(0xFF33D6C0, 1.6f, "LISTENING"),
+    THINKING(0xFF8A6CF0, 2.2f, "THINKING"),
+    EXECUTING(0xFFF0913A, 3.2f, "EXECUTING"),
+    SPEAKING(0xFF3AC8F0, 2.0f, "SPEAKING"),
+    ERROR(0xFFF0473A, 0.2f, "ERROR"),
+}
+
 object Ui {
+    var coreState by mutableStateOf(CoreState.IDLE)
+    var jarvis by mutableStateOf(Prefs.jarvis)
+    var input by mutableStateOf("")
     var theme by mutableStateOf(Prefs.theme)
     var accent by mutableStateOf(Prefs.accent)
     var fontScale by mutableStateOf(Prefs.fontScale)

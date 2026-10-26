@@ -42,9 +42,13 @@ object Tools {
         }, fn))
     }
 
+    /** Jarvis only monitors the phone: nothing else is offered or allowed in that mode. */
+    val JARVIS = setOf("get_system_status", "get_phone_info", "get_datetime", "get_usage_summary")
+
     fun schemas(): JSONArray {
         val arr = JSONArray()
         for (t in all) {
+            if (Ui.jarvis && t.name !in JARVIS) continue
             val props = JSONObject(); val req = JSONArray()
             for (p in t.params) {
                 props.put(p[0], JSONObject().put("type", p[1]).put("description", p[2]))
@@ -59,6 +63,7 @@ object Tools {
 
     fun run(name: String, args: JSONObject): String {
         val t = all.firstOrNull { it.name == name } ?: return "Unknown tool $name"
+        if (Ui.jarvis && name !in JARVIS) return "Jarvis only monitors the phone. Ask EV for that."
         return try { t.fn(args) } catch (e: SecurityException) {
             "Permission missing: ${e.message}. Ask the user to allow it in Settings."
         } catch (e: Exception) { "That failed: ${e.message ?: e.javaClass.simpleName}" }
@@ -117,6 +122,7 @@ object Tools {
 
     // ---------------- tool list ----------------
     init {
+        def("get_system_status", "Full health report of the phone: battery, memory, storage, network, uptime.") { Sys.report(ctx) }
         def("get_datetime", "Current date and time.") {
             SimpleDateFormat("EEEE, d MMMM yyyy, HH:mm", Locale.getDefault()).format(Date())
         }
