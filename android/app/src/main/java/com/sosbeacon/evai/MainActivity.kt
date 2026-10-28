@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -78,7 +79,15 @@ fun EvRoot() {
     }
     CompositionLocalProvider(LocalDensity provides Density(d.density, d.fontScale * Ui.fontScale / 100f)) {
         MaterialTheme(colorScheme = scheme) {
-            var screen by remember { mutableStateOf("home") }
+            var screen by rememberSaveable { mutableStateOf("home") }
+            val act = view.context as? android.app.Activity
+            LaunchedEffect(Ui.orientation) {
+                act?.requestedOrientation = when (Ui.orientation) {
+                    "portrait" -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                    "auto" -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
+                    else -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                }
+            }
             val dashBg = androidx.compose.ui.graphics.Brush.radialGradient(
                 listOf(if (Ui.jarvis) Color(0xFF1A1405) else Color(0xFF10131E),
                     if (Ui.jarvis) Color(0xFF0E0A02) else Color(0xFF0A0C15), Color(0xFF05060A)))
@@ -376,7 +385,13 @@ fun SettingsScreen() {
             OutlinedButton(onClick = { Ai.reset(); Ui.messages.clear() }, modifier = Modifier.padding(top = 8.dp)) { Text("Clear conversation") }
         }
         Section("Look") {
-            Text("Theme")
+            Text("Screen layout")
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("landscape" to "Landscape", "portrait" to "Portrait", "auto" to "Auto-rotate").forEach { (k, n) ->
+                    FilterChip(selected = Ui.orientation == k, onClick = { Ui.orientation = k; Prefs.orientation = k }, label = { Text(n) })
+                }
+            }
+            Text("Theme", Modifier.padding(top = 8.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Ui.THEMES.forEach { (k, n) -> FilterChip(selected = Ui.theme == k, onClick = { Ui.theme = k; Prefs.theme = k }, label = { Text(n) }) }
             }

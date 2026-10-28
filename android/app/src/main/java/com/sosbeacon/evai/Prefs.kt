@@ -33,6 +33,7 @@ object Prefs {
     var model by StrPref("model", "")
     var baseUrl by StrPref("base_url", "")
     var personality by StrPref("personality", "default")
+    var orientation by StrPref("orientation", "landscape")
     var theme by StrPref("theme", "dark")
     var accent by StrPref("accent", "#00E5FF")
     var fontScale by IntPref("font_scale", 100)

@@ -20,6 +20,7 @@ object Ui {
     var coreState by mutableStateOf(CoreState.IDLE)
     var jarvis by mutableStateOf(Prefs.jarvis)
     var input by mutableStateOf("")
+    var orientation by mutableStateOf(Prefs.orientation)
     var theme by mutableStateOf(Prefs.theme)
     var accent by mutableStateOf(Prefs.accent)
     var fontScale by mutableStateOf(Prefs.fontScale)
