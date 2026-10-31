@@ -11,6 +11,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.Density
@@ -56,6 +58,30 @@ class MainActivity : ComponentActivity() {
             Thread { try { Updater.run(applicationContext) } catch (e: Exception) { } }.also { it.isDaemon = true; it.start() }
         }
         setContent { EvRoot() }
+    }
+}
+
+@Composable
+fun LaunchSplash(onDone: () -> Unit) {
+    val steps = listOf("Starting EV AI...", "Loading your settings...", "Connecting services...", "Ready")
+    var p by remember { mutableStateOf(0f) }
+    LaunchedEffect(Unit) {
+        while (p < 1f) { kotlinx.coroutines.delay(35); p = (p + 0.04f).coerceAtMost(1f) }
+        kotlinx.coroutines.delay(150); onDone()
+    }
+    val accent = Ui.accentColor()
+    Box(Modifier.fillMaxSize().background(Color(0xFF05060A)), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
+            Image(painterResource(R.drawable.ev_logo), null, Modifier.size(96.dp))
+            Spacer(Modifier.height(28.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                val on = (p * 20).toInt()
+                for (i in 0 until 20) Box(Modifier.width(12.dp).height(10.dp)
+                    .background(if (i < on) accent else Color(0xFF1B2233)))
+            }
+            Spacer(Modifier.height(14.dp))
+            Text(steps[((p * (steps.size - 1)).toInt()).coerceIn(0, steps.lastIndex)], color = accent, fontSize = 14.sp)
+        }
     }
 }
 
@@ -92,6 +118,8 @@ fun EvRoot() {
                 listOf(if (Ui.jarvis) Color(0xFF1A1405) else Color(0xFF10131E),
                     if (Ui.jarvis) Color(0xFF0E0A02) else Color(0xFF0A0C15), Color(0xFF05060A)))
             val frameBg = if (screen == "home") Modifier.background(dashBg) else Modifier.background(bg)
+            var splash by rememberSaveable { mutableStateOf(true) }
+            if (splash) { LaunchSplash { splash = false }; return@MaterialTheme }
             Column(Modifier.fillMaxSize().then(frameBg).safeDrawingPadding()) {
                 if (screen == "home") Dashboard { screen = it }
                 else {
