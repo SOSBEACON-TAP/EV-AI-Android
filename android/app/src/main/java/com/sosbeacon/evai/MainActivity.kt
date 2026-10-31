@@ -63,7 +63,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun LaunchSplash(onDone: () -> Unit) {
-    val steps = listOf("Starting EV AI...", "Loading your settings...", "Connecting services...", "Ready")
+    val steps = listOf("BOOTING CORE SYSTEMS", "INITIALIZING NEURAL LINK", "CALIBRATING SENSORS",
+        "LOADING AI MODULES", "SYNCING MEMORY BANKS", "ALL SYSTEMS ONLINE")
     var p by remember { mutableStateOf(0f) }
     LaunchedEffect(Unit) {
         while (p < 1f) { kotlinx.coroutines.delay(35); p = (p + 0.04f).coerceAtMost(1f) }
@@ -80,7 +81,8 @@ fun LaunchSplash(onDone: () -> Unit) {
                     .background(if (i < on) accent else Color(0xFF1B2233)))
             }
             Spacer(Modifier.height(14.dp))
-            Text(steps[((p * (steps.size - 1)).toInt()).coerceIn(0, steps.lastIndex)], color = accent, fontSize = 14.sp)
+            Text(steps[((p * (steps.size - 1)).toInt()).coerceIn(0, steps.lastIndex)] + ".".repeat((p * 40).toInt() % 4),
+                color = accent, fontSize = 13.sp, letterSpacing = 3.sp)
         }
     }
 }
