@@ -46,6 +46,7 @@ object Prefs {
     var introDone by BoolPref("intro_done", false)
     var deviceCode by StrPref("device_code", "")
     var server by StrPref("alert_server", "https://ntfy.sh")
+    var computeKey by StrPref("compute_key", "")
     var listen by BoolPref("listen", true)
     var lastSeen by LongPref("last_seen", 0L)
     var jarvis by BoolPref("jarvis", false)

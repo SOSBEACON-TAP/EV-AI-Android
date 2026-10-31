@@ -481,6 +481,7 @@ fun ComputerScreen() {
             Text("Keep this code private. Anyone with it can send call alerts to this phone.",
                 Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
         }
+        ComputeSection()
         Section("Incoming calls from your computer") {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(listen, {
