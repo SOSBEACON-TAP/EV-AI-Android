@@ -62,11 +62,23 @@ object Ringer {
     private val handler = Handler(Looper.getMainLooper())
     private val stopper = Runnable { stop() }
 
-    fun start(c: Context) {
+    private var savedAlarmVol = -1
+
+    fun start(c: Context, loud: Boolean = false) {
         stop()
         try {
-            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+            val uri = RingtoneManager.getDefaultUri(if (loud) RingtoneManager.TYPE_ALARM else RingtoneManager.TYPE_RINGTONE)
             ringtone = RingtoneManager.getRingtone(c, uri)?.also {
+                if (loud) {
+                    // Find my phone: ring on the ALARM stream at full volume, so silent mode doesn't hide it.
+                    it.audioAttributes = android.media.AudioAttributes.Builder()
+                        .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
+                    val am = c.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+                    savedAlarmVol = am.getStreamVolume(android.media.AudioManager.STREAM_ALARM)
+                    am.setStreamVolume(android.media.AudioManager.STREAM_ALARM,
+                        am.getStreamMaxVolume(android.media.AudioManager.STREAM_ALARM), 0)
+                }
                 if (Build.VERSION.SDK_INT >= 28) it.isLooping = true
                 it.play()
             }
@@ -80,13 +92,20 @@ object Ringer {
                 (c.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator).vibrate(VibrationEffect.createWaveform(pattern, 0))
             }
         } catch (e: Exception) { }
-        handler.postDelayed(stopper, 45_000)
+        handler.postDelayed(stopper, if (loud) 90_000 else 45_000)
     }
 
     fun stop() {
         handler.removeCallbacks(stopper)
         try { ringtone?.stop() } catch (e: Exception) { }
         ringtone = null
+        if (savedAlarmVol >= 0) {
+            try {
+                (EvApp.ctx.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager)
+                    .setStreamVolume(android.media.AudioManager.STREAM_ALARM, savedAlarmVol, 0)
+            } catch (e: Exception) { }
+            savedAlarmVol = -1
+        }
         try {
             val c = EvApp.ctx
             if (Build.VERSION.SDK_INT >= 31) {
@@ -102,7 +121,9 @@ object Ringer {
 object IncomingCall {
     private const val CHANNEL = "evai_call"
 
-    fun show(c: Context, message: String) {
+    fun show(c: Context, rawMessage: String) {
+        val loud = rawMessage.startsWith("FIND:")
+        val message = rawMessage.removePrefix("FIND:")
         val nm = c.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val ch = NotificationChannel(CHANNEL, "EV is calling", NotificationManager.IMPORTANCE_HIGH)
         ch.setSound(null, null)
@@ -123,7 +144,7 @@ object IncomingCall {
             .setFullScreenIntent(pi, true)
             .build()
         try { nm.notify(900, n) } catch (e: SecurityException) { }
-        Ringer.start(c)
+        Ringer.start(c, loud)
     }
 
     fun dismiss(c: Context) {

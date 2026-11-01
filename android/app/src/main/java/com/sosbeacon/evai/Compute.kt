@@ -43,6 +43,7 @@ object ComputeClient {
     var session by mutableStateOf(false)
     var shot by mutableStateOf<Bitmap?>(null)
     var busy by mutableStateOf(false)
+    val chat = mutableStateListOf<String>()      // "You: ..." / "EV: ..." lines for Ask EV
 
     @Volatile private var listening = false
     private val rnd = SecureRandom()
@@ -152,6 +153,12 @@ object ComputeClient {
         }.start()
     }
 
+    fun ask(text: String) {
+        if (text.isBlank()) return
+        chat.add("You: $text")
+        send("ask", JSONObject().put("text", text))
+    }
+
     fun startSession() { status = "Waiting for you to allow it on the computer..."; send("hello", JSONObject().put("name", Build.MODEL)) }
     fun endSession() { send("bye"); session = false }
 
@@ -176,6 +183,7 @@ object ComputeClient {
                         val msg = m.optString("msg")
                         if (msg.startsWith("Session started") || msg.startsWith("Session already")) session = true
                         if (msg.startsWith("No active session")) session = false
+                        if (m.optString("kind") == "ask") { chat.add("EV: $msg"); return@stream }
                         if (msg != "pong" && msg != "Screenshot sent.") status = msg
                     }
                 } catch (e: Exception) { }
@@ -217,6 +225,16 @@ fun ComputeSection() {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = { c.send("screenshot", JSONObject().put("scale", 0.5).put("q", 45)) }) { Text("Refresh screen") }
                     Switch(auto, { auto = it }); Text("Auto")
+                }
+                // Ask EV: run a command or question on the computer's EV AI and read the reply here.
+                var question by remember { mutableStateOf("") }
+                Spacer(Modifier.height(8.dp))
+                Text("Ask EV on your computer", color = MaterialTheme.colorScheme.primary)
+                c.chat.takeLast(8).forEach { Text(it, Modifier.padding(top = 2.dp)) }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedTextField(question, { question = it }, label = { Text("e.g. open youtube, what time is it") },
+                        singleLine = true, modifier = Modifier.weight(1f))
+                    Button(onClick = { c.ask(question); question = "" }) { Text("Ask") }
                 }
                 val bmp = c.shot
                 if (bmp != null) {
