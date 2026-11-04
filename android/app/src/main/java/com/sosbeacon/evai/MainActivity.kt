@@ -128,7 +128,7 @@ fun EvRoot() {
                     androidx.activity.compose.BackHandler { screen = "home" }
                     val title = when (screen) {
                         "actions" -> "Quick Actions"; "focus" -> "Focus"; "insights" -> "App Insights"
-                        "files" -> "File Finder"; "computer" -> "Computer"; "doctor" -> "Error Doctor"; else -> "Settings"
+                        "files" -> "File Finder"; "computer" -> "Computer"; "radar" -> "Radar"; "doctor" -> "Error Doctor"; else -> "Settings"
                     }
                     ScreenFrame(title, { screen = "home" }) {
                         when (screen) {
@@ -137,6 +137,7 @@ fun EvRoot() {
                             "insights" -> InsightsScreen()
                             "files" -> FilesScreen()
                             "computer" -> ComputerScreen()
+                            "radar" -> RadarScreen()
                             "doctor" -> DoctorScreen { screen = "settings" }
                             else -> SettingsScreen()
                         }

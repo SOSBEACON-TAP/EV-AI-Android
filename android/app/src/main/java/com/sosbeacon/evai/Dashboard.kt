@@ -205,6 +205,7 @@ fun ToolsPanel(openScreen: (String) -> Unit) {
         EvButton("📊 App Insights", accent = red) { openScreen("insights") }
         EvButton("🔎 File Finder", accent = red) { openScreen("files") }
         EvButton("💻 Computer", accent = red) { openScreen("computer") }
+        EvButton("📡 Radar", accent = red) { openScreen("radar") }
         EvButton("🩺 Error Doctor", accent = red) { openScreen("doctor") }
     }
 }
