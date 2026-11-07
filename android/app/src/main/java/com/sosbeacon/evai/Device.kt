@@ -250,5 +250,6 @@ class BootReceiver : BroadcastReceiver() {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
         Reminders.restoreAll(context)
         if (Prefs.listen) CallService.start(context)
+        if (KarenStore.enabled) KarenStore.startService(context)
     }
 }

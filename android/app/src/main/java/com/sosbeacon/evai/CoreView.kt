@@ -48,9 +48,10 @@ fun AiCore(modifier: Modifier = Modifier) {
     val jarvis = Ui.jarvis
     val state = Ui.coreState
     Canvas(modifier) {
-        val red = if (jarvis) Color(0xFFFFC400) else Color(0xFFF0465A)
-        val blue = if (jarvis) Color(0xFFFFE066) else Color(0xFF3C8CF0)
-        val accent = if (jarvis && state != CoreState.ERROR) Color(0xFFFFC400) else Color(state.hex)
+        val mode = modeAccent()
+        val red = mode ?: if (jarvis) Color(0xFFFFC400) else Color(0xFFF0465A)
+        val blue = mode?.copy(alpha = 0.75f) ?: if (jarvis) Color(0xFFFFE066) else Color(0xFF3C8CF0)
+        val accent = if (mode != null && state != CoreState.ERROR) mode else if (jarvis && state != CoreState.ERROR) Color(0xFFFFC400) else Color(state.hex)
         val center = Offset(size.width / 2f, size.height / 2f)
         val radius = (minOf(size.width, size.height) - 12.dp.toPx()) / 2f
         val cx = center.x

@@ -47,6 +47,7 @@ object Tools {
 
     fun schemas(): JSONArray {
         val arr = JSONArray()
+        if (Ui.mode.isNotEmpty()) return arr          // Ultron, Game and Karen chat only: no phone tools
         for (t in all) {
             if (Ui.jarvis && t.name !in JARVIS) continue
             val props = JSONObject(); val req = JSONArray()
@@ -63,6 +64,7 @@ object Tools {
 
     fun run(name: String, args: JSONObject): String {
         val t = all.firstOrNull { it.name == name } ?: return "Unknown tool $name"
+        if (Ui.mode.isNotEmpty()) return "This mode only chats. Ask EV for that."
         if (Ui.jarvis && name !in JARVIS) return "Jarvis only monitors the phone. Ask EV for that."
         return try { t.fn(args) } catch (e: SecurityException) {
             "Permission missing: ${e.message}. Ask the user to allow it in Settings."

@@ -27,6 +27,7 @@ class EvAccess : AccessibilityService() {
     override fun onInterrupt() {}
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (event != null) try { ShortsCounter.onEvent(this, event) } catch (e: Exception) { /* never let counting break sending */ }
         val pkg = pendingPackage ?: return
         if (System.currentTimeMillis() > pendingDeadline) { pendingPackage = null; return }
         if (event?.packageName?.toString() != pkg) return

@@ -50,6 +50,7 @@ object Prefs {
     var listen by BoolPref("listen", true)
     var lastSeen by LongPref("last_seen", 0L)
     var jarvis by BoolPref("jarvis", false)
+    var askSaveChat by BoolPref("ask_save_chat", true)
     var autoUpdate by BoolPref("auto_update", true)
     var lastUpdateCheck by LongPref("last_update_check", 0L)
     var updateNote by StrPref("update_note", "")

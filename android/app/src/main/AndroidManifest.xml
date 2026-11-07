@@ -84,6 +84,15 @@
         </service>
 
         <service
+            android:name=".KarenService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Karen mode parental control watches which app is open and sends the phone Home at the daily limit or bedtime" />
+        </service>
+
+        <service
             android:name=".EvAccess"
             android:exported="true"
             android:label="EV AI"

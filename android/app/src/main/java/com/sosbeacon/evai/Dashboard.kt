@@ -36,8 +36,8 @@ private val PANEL = Color(0xA50E121C)
 private val TITLE = Color(0xFF9FB4CC)
 private val TEXT = Color(0xFFD8ECF4)
 
-private fun leftAccent() = if (Ui.jarvis) Color(0xFFFFC400) else Color(0xFFF0465A)
-private fun rightAccent() = if (Ui.jarvis) Color(0xFFFFC400) else Color(0xFF3C8CF0)
+private fun leftAccent() = themeColor(Color(0xFFF0465A))
+private fun rightAccent() = themeColor(Color(0xFF3C8CF0))
 
 @Composable
 fun Glass(modifier: Modifier = Modifier, border: Color, content: @Composable ColumnScope.() -> Unit) {
@@ -82,19 +82,12 @@ fun MiniBar(label: String, pct: Int, detail: String, accent: Color) {
     }
 }
 
-fun toggleJarvis(scope: CoroutineScope) {
-    val on = !Ui.jarvis
-    Ui.jarvis = on
-    Prefs.jarvis = on
-    val msg = if (on) "Switched to Jarvis." else "Switched back to EV."
-    Ui.messages.add(Ui.Msg(false, msg))
-    if (Prefs.speak) Voice.speak(msg)
-    scope.launch { Ui.coreState = CoreState.SPEAKING; delay(1500); if (Ui.coreState == CoreState.SPEAKING) Ui.coreState = CoreState.IDLE }
-}
-
 @Composable
 fun Dashboard(openScreen: (String) -> Unit) {
     val scope = rememberCoroutineScope()
+    val act = LocalContext.current as? android.app.Activity
+    androidx.activity.compose.BackHandler(enabled = Ui.messages.isNotEmpty() && Prefs.askSaveChat) { Ui.exitAfterSave = true; Ui.askSave = true }
+    SaveChatDialog { act?.finish() }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val portrait = maxWidth < maxHeight
         Column(Modifier.fillMaxSize()) {
@@ -107,9 +100,11 @@ fun Dashboard(openScreen: (String) -> Unit) {
                     CorePanel(Modifier.fillMaxWidth().height(270.dp), scope)
                     ChatPanel(Modifier.fillMaxWidth().height(330.dp), scope)
                     StatusPanel()
-                    SystemPanel()
-                    QuickPanel(scope)
-                    if (!Ui.jarvis) ToolsPanel(openScreen)
+                    if (Ui.mode.isNotEmpty()) ModeToolsPanel(openScreen, scope) else {
+                        SystemPanel()
+                        QuickPanel(scope)
+                        if (!Ui.jarvis) ToolsPanel(openScreen)
+                    }
                 }
             } else {
                 Row(
@@ -118,14 +113,18 @@ fun Dashboard(openScreen: (String) -> Unit) {
                 ) {
                     Column(Modifier.weight(0.26f).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         StatusPanel()
-                        SystemPanel()
-                        if (!Ui.jarvis) ToolsPanel(openScreen)
+                        if (Ui.mode.isNotEmpty()) ModeToolsPanel(openScreen, scope) else {
+                            SystemPanel()
+                            if (!Ui.jarvis) ToolsPanel(openScreen)
+                        }
                     }
                     Column(Modifier.weight(0.48f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         CorePanel(Modifier.fillMaxWidth().weight(1f), scope)
                         ChatPanel(Modifier.fillMaxWidth().weight(1f), scope)
                     }
-                    Column(Modifier.weight(0.26f).fillMaxHeight().verticalScroll(rememberScrollState())) { QuickPanel(scope) }
+                    Column(Modifier.weight(0.26f).fillMaxHeight().verticalScroll(rememberScrollState())) {
+                        if (Ui.mode == "ultron") UltronRightPanel(openScreen) else if (Ui.mode.isEmpty()) QuickPanel(scope)
+                    }
                 }
             }
         }
@@ -140,11 +139,11 @@ fun TopBar(openScreen: (String) -> Unit) {
     ) {
         Image(painterResource(R.drawable.ev_logo), null, Modifier.size(28.dp))
         Spacer(Modifier.width(8.dp))
-        Text(if (Ui.jarvis) "J.A.R.V.I.S" else "EV AI", fontSize = 18.sp,
-            color = if (Ui.jarvis) Color(0xFFFFC400) else Color(0xFFE8F6FC), letterSpacing = 4.sp, maxLines = 1)
+        Text(modeTitle(), fontSize = 18.sp,
+            color = themeColor(Color(0xFFE8F6FC)), letterSpacing = 4.sp, maxLines = 1)
         Spacer(Modifier.width(12.dp))
-        Text(if (Ui.jarvis) "SYSTEM MONITOR ACTIVE" else "SYSTEM STATUS: ONLINE", fontSize = 10.sp,
-            color = if (Ui.jarvis) Color(0xFFFFC400) else Color(0xFF5FD0E8), letterSpacing = 2.sp,
+        Text(modeSubtitle(), fontSize = 10.sp,
+            color = themeColor(Color(0xFF5FD0E8)), letterSpacing = 2.sp,
             maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         Spacer(Modifier.width(8.dp))
         Box(
@@ -161,12 +160,12 @@ fun StatusPanel() {
     Glass(Modifier.fillMaxWidth(), accent) {
         PanelTitle("STATUS")
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(9.dp).clip(RoundedCornerShape(5.dp)).background(if (Ui.jarvis) Color(0xFFFFC400) else Color(Ui.coreState.hex)))
+            Box(Modifier.size(9.dp).clip(RoundedCornerShape(5.dp)).background(themeColor(Color(Ui.coreState.hex))))
             Spacer(Modifier.width(8.dp))
             Text(Ui.coreState.label, fontSize = 13.sp, color = Color(0xFFEAF4FA), letterSpacing = 2.sp)
         }
         Text(if (Ui.busy && Ui.status.isNotEmpty()) Ui.status else "Ready", fontSize = 11.sp, color = TEXT, modifier = Modifier.padding(top = 6.dp))
-        Text("MODE: ${if (Ui.jarvis) "JARVIS" else "EV"}", fontSize = 10.sp, color = if (Ui.jarvis) Color(0xFFFFC400) else TITLE, letterSpacing = 1.sp, modifier = Modifier.padding(top = 4.dp))
+        Text("MODE: ${if (Ui.mode.isNotEmpty()) Ui.mode.uppercase() else if (Ui.jarvis) "JARVIS" else "EV"}", fontSize = 10.sp, color = themeColor(TITLE), letterSpacing = 1.sp, modifier = Modifier.padding(top = 4.dp))
         Text("AI: ${Prefs.provider}", fontSize = 10.sp, color = TITLE, letterSpacing = 1.sp, modifier = Modifier.padding(top = 2.dp))
     }
 }
@@ -206,6 +205,7 @@ fun ToolsPanel(openScreen: (String) -> Unit) {
         EvButton("🔎 File Finder", accent = red) { openScreen("files") }
         EvButton("💻 Computer", accent = red) { openScreen("computer") }
         EvButton("📡 Radar", accent = red) { openScreen("radar") }
+        EvButton("🎞 Scroll counter", accent = red) { openScreen("scrolls") }
         EvButton("🩺 Error Doctor", accent = red) { openScreen("doctor") }
     }
 }
@@ -232,7 +232,9 @@ fun QuickPanel(scope: CoroutineScope) {
                 "Phone Info" to "what is my battery and storage",
                 "Morning Briefing" to "morning briefing",
             )) EvButton(label, accent = blue) { if (cmd.isEmpty()) Ui.input = "search the web for " else sendMessage(cmd, scope) }
-            EvButton("Clear Conversation", accent = blue) { Ai.reset(); Ui.messages.clear() }
+            EvButton("Clear Conversation", accent = blue) {
+                if (Ui.messages.isNotEmpty() && Prefs.askSaveChat) Ui.askSave = true else { Ai.reset(); Ui.messages.clear() }
+            }
         }
     }
 }
@@ -243,10 +245,16 @@ fun CorePanel(modifier: Modifier, scope: CoroutineScope) {
         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
             EvButton(if (Ui.jarvis) "⚡ Switch back to EV" else "⚡ Switch to Jarvis",
                 modifier = Modifier.fillMaxWidth(0.7f), accent = if (Ui.jarvis) Color(0xFFFFC400) else Color(0xFF5A96DC),
-                selected = Ui.jarvis) { toggleJarvis(scope) }
+                selected = Ui.jarvis) { switchMode(scope, "jarvis") }
             AiCore(Modifier.weight(1f).fillMaxWidth())
+            EvButton(if (Ui.mode == "ultron") "☠ Switch back to EV" else "☠ Switch to Ultron",
+                modifier = Modifier.fillMaxWidth(0.7f), accent = Color(0xFFFF2A2A), selected = Ui.mode == "ultron") { switchMode(scope, "ultron") }
+            Row(Modifier.fillMaxWidth(0.9f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                EvButton(if (Ui.mode == "game") "🎮 Leave" else "🎮 Game", modifier = Modifier.weight(1f), accent = Color(0xFF2BFF88), selected = Ui.mode == "game") { switchMode(scope, "game") }
+                EvButton(if (Ui.mode == "karen") "🛡 Leave" else "🛡 Karen", modifier = Modifier.weight(1f), accent = Color(0xFFB26BFF), selected = Ui.mode == "karen") { switchMode(scope, "karen") }
+            }
             Text(if (Ui.jarvis && Ui.coreState == CoreState.IDLE) "MONITORING" else Ui.coreState.label, fontSize = 10.sp, letterSpacing = 2.sp,
-                color = if (Ui.jarvis) Color(0xFFFFC400) else Color(Ui.coreState.hex))
+                color = themeColor(Color(Ui.coreState.hex)))
         }
     }
 }

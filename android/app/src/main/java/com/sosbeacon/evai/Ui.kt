@@ -19,6 +19,8 @@ enum class CoreState(val hex: Long, val speed: Float, val label: String) {
 object Ui {
     var coreState by mutableStateOf(CoreState.IDLE)
     var jarvis by mutableStateOf(Prefs.jarvis)
+    /** "" (EV / Jarvis), or "ultron", "game", "karen": a special screen with its own look and voice. */
+    var mode by mutableStateOf("")
     var input by mutableStateOf("")
     var orientation by mutableStateOf(Prefs.orientation)
     var theme by mutableStateOf(Prefs.theme)
@@ -29,6 +31,9 @@ object Ui {
     class Msg(val fromUser: Boolean, val text: String)
     val messages = mutableStateListOf<Msg>()
     var busy by mutableStateOf(false)
+    /** Ask "save this conversation?" before clearing it or leaving the app. */
+    var askSave by mutableStateOf(false)
+    var exitAfterSave by mutableStateOf(false)
     var status by mutableStateOf("")
 
     fun accentColor(): Color = try {

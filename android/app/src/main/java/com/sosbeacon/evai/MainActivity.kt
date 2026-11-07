@@ -117,8 +117,13 @@ fun EvRoot() {
                 }
             }
             val dashBg = androidx.compose.ui.graphics.Brush.radialGradient(
-                listOf(if (Ui.jarvis) Color(0xFF1A1405) else Color(0xFF10131E),
-                    if (Ui.jarvis) Color(0xFF0E0A02) else Color(0xFF0A0C15), Color(0xFF05060A)))
+                when (Ui.mode) {
+                    "ultron" -> listOf(Color(0xFF1C0808), Color(0xFF0F0404), Color(0xFF060202))
+                    "game" -> listOf(Color(0xFF07180F), Color(0xFF040E08), Color(0xFF020604))
+                    "karen" -> listOf(Color(0xFF12081C), Color(0xFF0A0510), Color(0xFF040208))
+                    else -> listOf(if (Ui.jarvis) Color(0xFF1A1405) else Color(0xFF10131E),
+                        if (Ui.jarvis) Color(0xFF0E0A02) else Color(0xFF0A0C15), Color(0xFF05060A))
+                })
             val frameBg = if (screen == "home") Modifier.background(dashBg) else Modifier.background(bg)
             var splash by rememberSaveable { mutableStateOf(true) }
             if (splash) { LaunchSplash { splash = false }; return@MaterialTheme }
@@ -128,7 +133,7 @@ fun EvRoot() {
                     androidx.activity.compose.BackHandler { screen = "home" }
                     val title = when (screen) {
                         "actions" -> "Quick Actions"; "focus" -> "Focus"; "insights" -> "App Insights"
-                        "files" -> "File Finder"; "computer" -> "Computer"; "radar" -> "Radar"; "doctor" -> "Error Doctor"; else -> "Settings"
+                        "files" -> "File Finder"; "computer" -> "Computer"; "radar" -> "Radar"; "doctor" -> "Error Doctor"; "karen" -> "Karen mode"; "scrolls" -> "Scroll counter"; else -> "Settings"
                     }
                     ScreenFrame(title, { screen = "home" }) {
                         when (screen) {
@@ -138,6 +143,8 @@ fun EvRoot() {
                             "files" -> FilesScreen()
                             "computer" -> ComputerScreen()
                             "radar" -> RadarScreen()
+                            "karen" -> KarenScreen()
+                            "scrolls" -> ScrollsScreen()
                             "doctor" -> DoctorScreen { screen = "settings" }
                             else -> SettingsScreen()
                         }
@@ -151,12 +158,13 @@ fun EvRoot() {
 fun sendMessage(text: String, scope: CoroutineScope) {
     if (text.isBlank() || Ui.busy) return
     Ui.messages.add(Ui.Msg(true, text.trim()))
+    if (Ui.mode == "ultron" && Ultron.local(text, scope)) return
     Ui.busy = true; Ui.status = "Thinking…"; Ui.coreState = CoreState.THINKING
     scope.launch {
         val reply = Ai.chat(text.trim()) { Ui.status = "Using ${it.replace('_', ' ')}…"; Ui.coreState = CoreState.EXECUTING }
         Ui.messages.add(Ui.Msg(false, reply))
         Ui.busy = false; Ui.status = ""
-        if (Prefs.speak) Voice.speak(reply)
+        if (Prefs.speak) Voice.speakNow(reply)
         Ui.coreState = CoreState.SPEAKING
         kotlinx.coroutines.delay((reply.length * 55L).coerceIn(1200L, 7000L))
         if (!Ui.busy) Ui.coreState = CoreState.IDLE

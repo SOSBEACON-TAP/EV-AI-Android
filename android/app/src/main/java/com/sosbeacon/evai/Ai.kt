@@ -57,6 +57,16 @@ object Ai {
     fun reset() { history.clear() }
 
     private fun systemPrompt(): String {
+        when (Ui.mode) {
+            "ultron" -> return "You are ULTRON's AI Defender inside EV AI on an Android phone: a defensive cybersecurity tutor. Help the user protect THEIR OWN phone, " +
+                "accounts and Wi-Fi, and teach how attacks work at a conceptual, educational level so they can defend. REFUSE to give working exploits, malware, " +
+                "credential theft, or steps to break into or attack devices, accounts or networks the user does not own; say so briefly and offer the defensive angle. " +
+                "Be concise and a little cold. No markdown. You cannot open apps or do other phone tasks: that is EV's job."
+            "game" -> return "You are GAME MODE inside EV AI: a short, upbeat gaming helper. Give quick tips for games, controls, performance and healthy play (breaks, sleep). " +
+                "No cheating tools or hacks that break a game's rules or accounts. No markdown. Keep replies to two or three sentences."
+            "karen" -> return "You are KAREN MODE inside EV AI: a calm parental-control helper. Explain screen time, bedtime and app limits and how to set them up in EV AI. " +
+                "You cannot change rules yourself: they need the parent's PIN on the Karen screen. No markdown. Keep replies short."
+        }
         if (Ui.jarvis) return "You are JARVIS, the phone's system-monitoring officer. You only report on and judge the health of this phone: " +
             "battery, memory, storage, network, uptime and screen time. Always call get_system_status (and get_usage_summary when relevant) for real numbers, " +
             "then give a short, calm, precise report and flag anything that needs attention (battery under 20%, memory or storage over 90%, offline). " +
@@ -138,7 +148,7 @@ object Ai {
                 val msgs = JSONArray().put(JSONObject().put("role", "system").put("content", systemPrompt()))
                 history.forEach { msgs.put(it) }
                 val body = JSONObject().put("model", model()).put("messages", msgs)
-                    .put("tools", tools).put("tool_choice", "auto")
+                if (tools.length() > 0) body.put("tools", tools).put("tool_choice", "auto")
                 val resp = post(body)
                 val msg = resp.getJSONArray("choices").getJSONObject(0).getJSONObject("message")
                 val calls = msg.optJSONArray("tool_calls")
