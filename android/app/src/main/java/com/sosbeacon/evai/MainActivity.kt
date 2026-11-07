@@ -7,7 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.speech.RecognizerIntent
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -39,7 +39,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     private val askPerms = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -127,6 +127,8 @@ fun EvRoot() {
             val frameBg = if (screen == "home") Modifier.background(dashBg) else Modifier.background(bg)
             var splash by rememberSaveable { mutableStateOf(true) }
             if (splash) { LaunchSplash { splash = false }; return@MaterialTheme }
+            var unlocked by remember { mutableStateOf(!AppLock.enabled) }
+            if (!unlocked) { LockScreen { unlocked = true }; return@MaterialTheme }
             Column(Modifier.fillMaxSize().then(frameBg).safeDrawingPadding()) {
                 if (screen == "home") Dashboard { screen = it }
                 else {
@@ -448,6 +450,7 @@ fun SettingsScreen() {
                 ctx.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${ctx.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             }, modifier = Modifier.padding(top = 8.dp)) { Text("App permissions") }
         }
+        AppLockSection()
         Section("Updates") {
             var updMsg by remember { mutableStateOf(Prefs.updateNote) }
             var auto by remember { mutableStateOf(Prefs.autoUpdate) }

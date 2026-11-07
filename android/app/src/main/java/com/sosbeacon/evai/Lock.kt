@@ -1,0 +1,142 @@
+package com.sosbeacon.evai
+
+import android.content.Context
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
+import java.security.SecureRandom
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
+
+/**
+ * App lock, like the laptop's start-up face check: EV AI opens with the phone's own face or fingerprint unlock,
+ * and a password you set is the fallback. Android does not let apps read the face data, so the phone itself does the
+ * matching and tells EV AI yes or no. The password is stored only as a salted hash.
+ */
+object AppLock {
+    private val sp get() = EvApp.ctx.getSharedPreferences("applock", Context.MODE_PRIVATE)
+
+    var enabled: Boolean
+        get() = sp.getBoolean("enabled", false) && hasPassword
+        set(v) { sp.edit().putBoolean("enabled", v).apply() }
+
+    val hasPassword: Boolean get() = (sp.getString("hash", "") ?: "") != ""
+
+    private fun hash(pw: String, salt: ByteArray): String =
+        SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(PBEKeySpec(pw.toCharArray(), salt, 100_000, 256))
+            .encoded.joinToString("") { "%02x".format(it) }
+
+    fun setPassword(pw: String) {
+        val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }
+        sp.edit().putString("salt", salt.joinToString("") { "%02x".format(it) }).putString("hash", hash(pw, salt)).putInt("fails", 0).apply()
+    }
+
+    fun lockedForSec(): Long = ((sp.getLong("until", 0L) - System.currentTimeMillis()) / 1000).coerceAtLeast(0)
+
+    /** 5 wrong tries lock the password box for 60 seconds. */
+    fun check(pw: String): Boolean {
+        if (lockedForSec() > 0 || !hasPassword) return false
+        val salt = (sp.getString("salt", "") ?: "").chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+        if (hash(pw, salt) == sp.getString("hash", "")) { sp.edit().putInt("fails", 0).apply(); return true }
+        val fails = sp.getInt("fails", 0) + 1
+        if (fails >= 5) sp.edit().putInt("fails", 0).putLong("until", System.currentTimeMillis() + 60_000).apply()
+        else sp.edit().putInt("fails", fails).apply()
+        return false
+    }
+
+    fun biometricReady(c: Context): Boolean =
+        BiometricManager.from(c).canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK) == BiometricManager.BIOMETRIC_SUCCESS
+}
+
+@Composable
+fun LockScreen(onUnlocked: () -> Unit) {
+    val ctx = LocalContext.current
+    val act = ctx as? FragmentActivity
+    val bio = remember { AppLock.biometricReady(ctx) }
+    var showPw by remember { mutableStateOf(!bio) }
+    var pw by remember { mutableStateOf("") }
+    var msg by remember { mutableStateOf(if (bio) "" else "No face or fingerprint is set up on this phone, so use your password.") }
+
+    fun prompt() {
+        if (act == null || !bio) { showPw = true; return }
+        val bp = BiometricPrompt(act, ContextCompat.getMainExecutor(ctx), object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) { onUnlocked() }
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) { showPw = true; msg = "Face or fingerprint did not unlock. Use your password." }
+        })
+        bp.authenticate(BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Unlock EV AI")
+            .setSubtitle("Look at the phone or use your fingerprint")
+            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK)
+            .setNegativeButtonText("Use password")
+            .build())
+    }
+    LaunchedEffect(Unit) { if (bio) prompt() }
+
+    Box(Modifier.fillMaxSize().background(Color(0xFF05060A)), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp).widthIn(max = 360.dp)) {
+            Image(painterResource(R.drawable.ev_logo), null, Modifier.size(80.dp))
+            Spacer(Modifier.height(16.dp))
+            Text("EV AI IS LOCKED", color = Ui.accentColor(), fontSize = 14.sp, letterSpacing = 3.sp)
+            Spacer(Modifier.height(16.dp))
+            if (bio) OutlinedButton(onClick = { prompt() }) { Text("Unlock with face or fingerprint") }
+            if (showPw) {
+                OutlinedTextField(pw, { pw = it }, Modifier.fillMaxWidth().padding(top = 12.dp), singleLine = true,
+                    label = { Text("Password") }, visualTransformation = PasswordVisualTransformation())
+                Button(onClick = {
+                    val wait = AppLock.lockedForSec()
+                    if (wait > 0) msg = "Too many wrong tries. Wait $wait seconds."
+                    else if (AppLock.check(pw)) onUnlocked() else msg = "Wrong password."
+                    pw = ""
+                }, modifier = Modifier.padding(top = 8.dp)) { Text("Unlock") }
+            }
+            if (msg.isNotEmpty()) Text(msg, Modifier.padding(top = 10.dp), color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+        }
+    }
+}
+
+/** Settings section: turn the lock on and set its password. */
+@Composable
+fun AppLockSection() {
+    var on by remember { mutableStateOf(AppLock.enabled) }
+    var pw by remember { mutableStateOf("") }
+    var msg by remember { mutableStateOf("") }
+    val ctx = LocalContext.current
+    Section("App lock") {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Switch(on, {
+                if (it && !AppLock.hasPassword) msg = "Set a password below first."
+                else { on = it; AppLock.enabled = it; msg = if (it) "EV AI will ask for your face, fingerprint or password when it opens." else "App lock is off." }
+            })
+            Spacer(Modifier.width(10.dp)); Text(if (on) "EV AI asks to unlock when it opens" else "Off")
+        }
+        OutlinedTextField(pw, { pw = it }, Modifier.fillMaxWidth().padding(top = 8.dp), singleLine = true,
+            label = { Text(if (AppLock.hasPassword) "New password (4+ characters)" else "Set a password (4+ characters)") },
+            visualTransformation = PasswordVisualTransformation())
+        Button(onClick = {
+            if (pw.length < 4) msg = "The password needs at least 4 characters."
+            else { AppLock.setPassword(pw); pw = ""; msg = "Password saved." }
+        }, modifier = Modifier.padding(top = 6.dp)) { Text("Save password") }
+        Text(if (AppLock.biometricReady(ctx)) "Face or fingerprint unlock from your phone will be tried first." else "This phone has no face or fingerprint set up, so only the password will be used.",
+            Modifier.padding(top = 6.dp), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+        if (msg.isNotEmpty()) Text(msg, Modifier.padding(top = 4.dp), color = MaterialTheme.colorScheme.primary)
+    }
+}
