@@ -43,6 +43,7 @@ object ComputeClient {
     var session by mutableStateOf(false)
     var shot by mutableStateOf<Bitmap?>(null)
     var busy by mutableStateOf(false)
+    var mode by mutableStateOf("")                // "", "choose", "keyboard" or "monitor"
     val chat = mutableStateListOf<String>()      // "You: ..." / "EV: ..." lines for Ask EV
 
     @Volatile private var listening = false
@@ -199,12 +200,13 @@ object ComputeClient {
 fun ComputeSection() {
     var pin by remember { mutableStateOf("") }
     var text by remember { mutableStateOf("") }
-    var auto by remember { mutableStateOf(false) }
     val c = ComputeClient
     DisposableEffect(c.paired) { if (c.paired) c.listen(); onDispose { c.stopListening() } }
-    LaunchedEffect(auto, c.session) {
-        while (auto && c.session) { c.send("screenshot", JSONObject().put("scale", 0.5).put("q", 45)); delay(2500) }
-    }
+    // as soon as a session starts, ask what the phone should be: keyboard or monitor
+    LaunchedEffect(c.session) { c.mode = if (c.session) "choose" else "" }
+    if (c.session && c.mode == "choose") ComputerChooser({ c.mode = "keyboard" }, { c.mode = "monitor" }, { c.mode = "" })
+    if (c.session && c.mode == "keyboard") KeyboardMode { c.mode = "" }
+    if (c.session && c.mode == "monitor") MonitorMode { c.mode = "" }
     Section("Compute: control your computer") {
         Text("Both devices must agree. The computer shows a 6-digit PIN (EV AI Settings, Phone control), you type it here, and the computer asks to allow it. Every session is approved on the computer again.",
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f))
@@ -222,9 +224,9 @@ fun ComputeSection() {
             }
             if (c.session) {
                 Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { c.send("screenshot", JSONObject().put("scale", 0.5).put("q", 45)) }) { Text("Refresh screen") }
-                    Switch(auto, { auto = it }); Text("Auto")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { c.mode = "keyboard" }, modifier = Modifier.weight(1f)) { Text("⌨ Keyboard") }
+                    Button(onClick = { c.mode = "monitor" }, modifier = Modifier.weight(1f)) { Text("🖥 Monitoring") }
                 }
                 // Ask EV: run a command or question on the computer's EV AI and read the reply here.
                 var question by remember { mutableStateOf("") }
@@ -236,45 +238,18 @@ fun ComputeSection() {
                         singleLine = true, modifier = Modifier.weight(1f))
                     Button(onClick = { c.ask(question); question = "" }) { Text("Ask") }
                 }
-                val bmp = c.shot
-                if (bmp != null) {
-                    var w by remember { mutableStateOf(1) }; var h by remember { mutableStateOf(1) }
-                    Image(bmp.asImageBitmap(), null, Modifier.fillMaxWidth().padding(top = 8.dp)
-                        .onSizeChanged { w = it.width.coerceAtLeast(1); h = it.height.coerceAtLeast(1) }
-                        .pointerInput(Unit) {
-                            detectTapGestures(
-                                onTap = { o -> c.send("click", JSONObject().put("x", o.x / w).put("y", o.y / h)) },
-                                onDoubleTap = { o -> c.send("click", JSONObject().put("x", o.x / w).put("y", o.y / h).put("double", true)) },
-                                onLongPress = { o -> c.send("click", JSONObject().put("x", o.x / w).put("y", o.y / h).put("button", "right")) })
-                        }
-                        .pointerInput(Unit) {
-                            var last = 0L
-                            detectDragGestures { ch, _ ->
-                                val now = System.currentTimeMillis()
-                                if (now - last > 120) { last = now
-                                    c.send("move", JSONObject().put("x", ch.position.x / w).put("y", ch.position.y / h)) }
-                            }
-                        })
-                    Text("Tap = click, double tap = double click, long press = right click, drag = move.",
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
-                }
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     OutlinedButton(onClick = { c.send("volume_down") }) { Text("Vol -") }
                     OutlinedButton(onClick = { c.send("volume_up") }) { Text("Vol +") }
                     OutlinedButton(onClick = { c.send("mute") }) { Text("Mute") }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    OutlinedButton(onClick = { c.send("scroll", JSONObject().put("dy", 3)) }) { Text("Scroll up") }
-                    OutlinedButton(onClick = { c.send("scroll", JSONObject().put("dy", -3)) }) { Text("Scroll down") }
-                    OutlinedButton(onClick = { c.send("lock") }) { Text("Lock") }
-                    OutlinedButton(onClick = { c.send("sleep") }) { Text("Sleep") }
-                }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     OutlinedTextField(text, { text = it }, label = { Text("Type on the computer") }, singleLine = true, modifier = Modifier.weight(1f))
                     Button(onClick = { c.send("type", JSONObject().put("text", text)); text = "" }) { Text("Send") }
                     OutlinedButton(onClick = { c.send("key", JSONObject().put("name", "enter")) }) { Text("Enter") }
                 }
+                ComputerTools()
             }
         }
         if (c.status.isNotEmpty()) Text(c.status, Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.primary)
