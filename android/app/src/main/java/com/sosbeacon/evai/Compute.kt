@@ -43,6 +43,7 @@ object ComputeClient {
     var session by mutableStateOf(false)
     var shot by mutableStateOf<Bitmap?>(null)
     var busy by mutableStateOf(false)
+    var asked = false                             // the keyboard/monitor question is asked once per session
     var mode by mutableStateOf("")                // "", "choose", "keyboard" or "monitor"
     val chat = mutableStateListOf<String>()      // "You: ..." / "EV: ..." lines for Ask EV
 
@@ -203,7 +204,9 @@ fun ComputeSection() {
     val c = ComputeClient
     DisposableEffect(c.paired) { if (c.paired) c.listen(); onDispose { c.stopListening() } }
     // as soon as a session starts, ask what the phone should be: keyboard or monitor
-    LaunchedEffect(c.session) { c.mode = if (c.session) "choose" else "" }
+    LaunchedEffect(c.session) {
+        if (c.session) { if (!c.asked) { c.asked = true; c.mode = "choose" } } else { c.asked = false; c.mode = "" }
+    }
     if (c.session && c.mode == "choose") ComputerChooser({ c.mode = "keyboard" }, { c.mode = "monitor" }, { c.mode = "" })
     if (c.session && c.mode == "keyboard") KeyboardMode { c.mode = "" }
     if (c.session && c.mode == "monitor") MonitorMode { c.mode = "" }
@@ -228,28 +231,34 @@ fun ComputeSection() {
                     Button(onClick = { c.mode = "keyboard" }, modifier = Modifier.weight(1f)) { Text("⌨ Keyboard") }
                     Button(onClick = { c.mode = "monitor" }, modifier = Modifier.weight(1f)) { Text("🖥 Monitoring") }
                 }
-                // Ask EV: run a command or question on the computer's EV AI and read the reply here.
-                var question by remember { mutableStateOf("") }
-                Spacer(Modifier.height(8.dp))
-                Text("Ask EV on your computer", color = MaterialTheme.colorScheme.primary)
-                c.chat.takeLast(8).forEach { Text(it, Modifier.padding(top = 2.dp)) }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    OutlinedTextField(question, { question = it }, label = { Text("e.g. open youtube, what time is it") },
-                        singleLine = true, modifier = Modifier.weight(1f))
-                    Button(onClick = { c.ask(question); question = "" }) { Text("Ask") }
+                var tab by remember { mutableStateOf(0) }
+                TabRow(selectedTabIndex = tab, containerColor = androidx.compose.ui.graphics.Color.Transparent, modifier = Modifier.padding(top = 8.dp)) {
+                    listOf("Ask EV", "Controls", "Shortcuts").forEachIndexed { i, t -> Tab(selected = tab == i, onClick = { tab = i }, text = { Text(t) }) }
                 }
                 Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    OutlinedButton(onClick = { c.send("volume_down") }) { Text("Vol -") }
-                    OutlinedButton(onClick = { c.send("volume_up") }) { Text("Vol +") }
-                    OutlinedButton(onClick = { c.send("mute") }) { Text("Mute") }
+                if (tab == 0) {
+                    // Ask EV: run a command or question on the computer's EV AI and read the reply here.
+                    var question by remember { mutableStateOf("") }
+                    c.chat.takeLast(8).forEach { Text(it, Modifier.padding(top = 2.dp)) }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        OutlinedTextField(question, { question = it }, label = { Text("e.g. open youtube, what time is it") },
+                            singleLine = true, modifier = Modifier.weight(1f))
+                        Button(onClick = { c.ask(question); question = "" }) { Text("Ask") }
+                    }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    OutlinedTextField(text, { text = it }, label = { Text("Type on the computer") }, singleLine = true, modifier = Modifier.weight(1f))
-                    Button(onClick = { c.send("type", JSONObject().put("text", text)); text = "" }) { Text("Send") }
-                    OutlinedButton(onClick = { c.send("key", JSONObject().put("name", "enter")) }) { Text("Enter") }
+                if (tab == 1) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        OutlinedButton(onClick = { c.send("volume_down") }) { Text("Vol -") }
+                        OutlinedButton(onClick = { c.send("volume_up") }) { Text("Vol +") }
+                        OutlinedButton(onClick = { c.send("mute") }) { Text("Mute") }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        OutlinedTextField(text, { text = it }, label = { Text("Type on the computer") }, singleLine = true, modifier = Modifier.weight(1f))
+                        Button(onClick = { c.send("type", JSONObject().put("text", text)); text = "" }) { Text("Send") }
+                        OutlinedButton(onClick = { c.send("key", JSONObject().put("name", "enter")) }) { Text("Enter") }
+                    }
                 }
-                ComputerTools()
+                if (tab == 2) ComputerTools()
             }
         }
         if (c.status.isNotEmpty()) Text(c.status, Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.primary)
