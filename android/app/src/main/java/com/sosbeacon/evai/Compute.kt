@@ -19,6 +19,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -244,7 +245,7 @@ fun ComputeSection() {
                 }
                 var tab by remember { mutableStateOf(0) }
                 TabRow(selectedTabIndex = tab, containerColor = androidx.compose.ui.graphics.Color.Transparent, modifier = Modifier.padding(top = 8.dp)) {
-                    listOf("Ask EV", "Controls", "Shortcuts").forEachIndexed { i, t -> Tab(selected = tab == i, onClick = { tab = i }, text = { Text(t) }) }
+                    listOf("Ask EV", "Controls", "Shortcuts", "EV Actions").forEachIndexed { i, t -> Tab(selected = tab == i, onClick = { tab = i }, text = { Text(t) }) }
                 }
                 Spacer(Modifier.height(8.dp))
                 if (tab == 0) {
@@ -268,10 +269,79 @@ fun ComputeSection() {
                         Button(onClick = { c.send("type", JSONObject().put("text", text)); text = "" }) { Text("Send") }
                         OutlinedButton(onClick = { c.send("key", JSONObject().put("name", "enter")) }) { Text("Enter") }
                     }
+                    var link by remember { mutableStateOf("") }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        OutlinedTextField(link, { link = it }, label = { Text("Open a link on the computer") }, singleLine = true, modifier = Modifier.weight(1f))
+                        Button(onClick = { if (link.isNotBlank()) { c.send("url", JSONObject().put("url", link.trim())); link = "" } }) { Text("Open") }
+                    }
+                    var confirm by remember { mutableStateOf("") }
+                    Text("Power", Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        OutlinedButton(onClick = { confirm = "shutdown" }) { Text("Shut down") }
+                        OutlinedButton(onClick = { confirm = "restart" }) { Text("Restart") }
+                        OutlinedButton(onClick = { c.send("power", JSONObject().put("what", "cancel")) }) { Text("Cancel") }
+                    }
+                    if (confirm.isNotEmpty()) androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { confirm = "" },
+                        title = { Text(if (confirm == "shutdown") "Shut the computer down?" else "Restart the computer?") },
+                        text = { Text("It starts in 60 seconds and you can cancel from here. Unsaved work on the computer will be lost.") },
+                        confirmButton = { TextButton(onClick = { c.send("power", JSONObject().put("what", confirm)); confirm = "" }) { Text("Yes") } },
+                        dismissButton = { TextButton(onClick = { confirm = "" }) { Text("No") } })
                 }
                 if (tab == 2) ComputerTools()
+                if (tab == 3) EvActions()
             }
         }
         if (c.status.isNotEmpty()) Text(c.status, Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.primary)
     }
+}
+
+
+/** Every EV AI action of the computer, from the phone: each button asks the computer's EV AI to do it and shows the reply. */
+@Composable
+fun EvActions() {
+    val c = ComputeClient
+    var field by remember { mutableStateOf("") }
+    @Composable fun group(title: String, items: List<Pair<String, String>>) {
+        Text(title, Modifier.padding(top = 10.dp, bottom = 2.dp), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+        items.chunked(2).forEach { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                row.forEach { (t, q) -> OutlinedButton(onClick = { c.ask(q) }, contentPadding = PaddingValues(horizontal = 8.dp), modifier = Modifier.weight(1f)) { Text(t, fontSize = 12.sp, maxLines = 1) } }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+    group("Checks", listOf("Status report" to "give me a full status report", "Top processes" to "what is using the most CPU and memory right now",
+        "Disk space" to "check my disk space", "Battery" to "check my battery", "Network" to "check my network and internet", "Health check" to "run a system health check"))
+    group("Day", listOf("Morning briefing" to "give me my morning briefing", "My notes" to "list my notes", "Time and date" to "what time is it"))
+    group("Web", listOf("Open YouTube" to "open youtube", "Mute browser tabs" to "mute all tabs", "Unmute tabs" to "unmute all tabs", "Close duplicate tabs" to "close duplicate tabs"))
+    group("Lists", listOf("My to-dos" to "list my to-dos", "Reminders" to "list my reminders", "Read clipboard" to "read my clipboard", "Bookmarks" to "list my bookmarks"))
+    // EV's modes: the same as clicking them on the computer's mode wheel (a second tap switches that mode off)
+    Text("Modes (tap again to turn off)", Modifier.padding(top = 10.dp, bottom = 2.dp), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+    listOf("Jarvis" to "jarvis", "Ultron" to "ultron", "Game" to "game", "Karen" to "karen", "Friday" to "friday", "Tars" to "tars",
+        "Gideon" to "gideon", "Edith" to "edith", "Baymax" to "baymax", "Overdrive" to "overdrive").chunked(3).forEach { row ->
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            row.forEach { (t, k) -> OutlinedButton(onClick = { c.send("mode", JSONObject().put("key", k)) }, contentPadding = PaddingValues(horizontal = 6.dp), modifier = Modifier.weight(1f)) { Text(t, fontSize = 12.sp, maxLines = 1) } }
+            repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+        }
+    }
+    OutlinedButton(onClick = { c.send("mode", JSONObject().put("key", "ev")) }, modifier = Modifier.fillMaxWidth()) { Text("Back to EV (everything off)", fontSize = 12.sp) }
+    group("Computer", listOf("Read my screen" to "read my screen", "Active window" to "what is the active window", "Usage today" to "show my usage summary",
+        "Frequent apps" to "what apps do I use most", "Check my email" to "check my email", "Recent files" to "list the recent screenshots"))
+    Text("Add", Modifier.padding(top = 10.dp, bottom = 2.dp), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+    var addText by remember { mutableStateOf("") }
+    OutlinedTextField(addText, { addText = it }, label = { Text("a to-do, a note, something to remember, or minutes") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+    Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        OutlinedButton(onClick = { if (addText.isNotBlank()) { c.ask("add a to-do: ${addText.trim()}"); addText = "" } }, contentPadding = PaddingValues(horizontal = 6.dp), modifier = Modifier.weight(1f)) { Text("To-do", fontSize = 12.sp) }
+        OutlinedButton(onClick = { if (addText.isNotBlank()) { c.ask("add a note: ${addText.trim()}"); addText = "" } }, contentPadding = PaddingValues(horizontal = 6.dp), modifier = Modifier.weight(1f)) { Text("Note", fontSize = 12.sp) }
+        OutlinedButton(onClick = { if (addText.isNotBlank()) { c.ask("remember that ${addText.trim()}"); addText = "" } }, contentPadding = PaddingValues(horizontal = 6.dp), modifier = Modifier.weight(1f)) { Text("Remember", fontSize = 12.sp) }
+        OutlinedButton(onClick = { addText.trim().toIntOrNull()?.let { c.ask("set a timer for $it minutes"); addText = "" } }, contentPadding = PaddingValues(horizontal = 6.dp), modifier = Modifier.weight(1f)) { Text("Timer", fontSize = 12.sp) }
+    }
+    Text("Search and find", Modifier.padding(top = 10.dp, bottom = 2.dp), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+    OutlinedTextField(field, { field = it }, label = { Text("a word to search or a file to find") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+    Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        OutlinedButton(onClick = { if (field.isNotBlank()) c.ask("search the web for ${field.trim()}") }, modifier = Modifier.weight(1f)) { Text("Search web", fontSize = 12.sp) }
+        OutlinedButton(onClick = { if (field.isNotBlank()) c.ask("find the file ${field.trim()}") }, modifier = Modifier.weight(1f)) { Text("Find file", fontSize = 12.sp) }
+    }
+    Text("Replies show in the Ask EV tab.", Modifier.padding(top = 8.dp), fontSize = 11.sp)
 }
