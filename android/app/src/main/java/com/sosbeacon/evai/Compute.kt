@@ -315,7 +315,28 @@ fun EvActions() {
         "Disk space" to "check my disk space", "Battery" to "check my battery", "Network" to "check my network and internet", "Health check" to "run a system health check"))
     group("Day", listOf("Morning briefing" to "give me my morning briefing", "My notes" to "list my notes", "Time and date" to "what time is it"))
     group("Web", listOf("Open YouTube" to "open youtube", "Mute browser tabs" to "mute all tabs", "Unmute tabs" to "unmute all tabs", "Close duplicate tabs" to "close duplicate tabs"))
-    group("Lists", listOf("My to-dos" to "list my to-dos", "Reminders" to "list my reminders", "Read clipboard" to "read my clipboard", "Recent files" to "list the recent screenshots"))
+    group("Lists", listOf("My to-dos" to "list my to-dos", "Reminders" to "list my reminders", "Read clipboard" to "read my clipboard", "Bookmarks" to "list my bookmarks"))
+    // EV's modes: the same as clicking them on the computer's mode wheel (a second tap switches that mode off)
+    Text("Modes (tap again to turn off)", Modifier.padding(top = 10.dp, bottom = 2.dp), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+    listOf("Jarvis" to "jarvis", "Ultron" to "ultron", "Game" to "game", "Karen" to "karen", "Friday" to "friday", "Tars" to "tars",
+        "Gideon" to "gideon", "Edith" to "edith", "Baymax" to "baymax", "Overdrive" to "overdrive").chunked(3).forEach { row ->
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            row.forEach { (t, k) -> OutlinedButton(onClick = { c.send("mode", JSONObject().put("key", k)) }, contentPadding = PaddingValues(horizontal = 6.dp), modifier = Modifier.weight(1f)) { Text(t, fontSize = 12.sp, maxLines = 1) } }
+            repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+        }
+    }
+    OutlinedButton(onClick = { c.send("mode", JSONObject().put("key", "ev")) }, modifier = Modifier.fillMaxWidth()) { Text("Back to EV (everything off)", fontSize = 12.sp) }
+    group("Computer", listOf("Read my screen" to "read my screen", "Active window" to "what is the active window", "Usage today" to "show my usage summary",
+        "Frequent apps" to "what apps do I use most", "Check my email" to "check my email", "Recent files" to "list the recent screenshots"))
+    Text("Add", Modifier.padding(top = 10.dp, bottom = 2.dp), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+    var addText by remember { mutableStateOf("") }
+    OutlinedTextField(addText, { addText = it }, label = { Text("a to-do, a note, something to remember, or minutes") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+    Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        OutlinedButton(onClick = { if (addText.isNotBlank()) { c.ask("add a to-do: ${addText.trim()}"); addText = "" } }, contentPadding = PaddingValues(horizontal = 6.dp), modifier = Modifier.weight(1f)) { Text("To-do", fontSize = 12.sp) }
+        OutlinedButton(onClick = { if (addText.isNotBlank()) { c.ask("add a note: ${addText.trim()}"); addText = "" } }, contentPadding = PaddingValues(horizontal = 6.dp), modifier = Modifier.weight(1f)) { Text("Note", fontSize = 12.sp) }
+        OutlinedButton(onClick = { if (addText.isNotBlank()) { c.ask("remember that ${addText.trim()}"); addText = "" } }, contentPadding = PaddingValues(horizontal = 6.dp), modifier = Modifier.weight(1f)) { Text("Remember", fontSize = 12.sp) }
+        OutlinedButton(onClick = { addText.trim().toIntOrNull()?.let { c.ask("set a timer for $it minutes"); addText = "" } }, contentPadding = PaddingValues(horizontal = 6.dp), modifier = Modifier.weight(1f)) { Text("Timer", fontSize = 12.sp) }
+    }
     Text("Search and find", Modifier.padding(top = 10.dp, bottom = 2.dp), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
     OutlinedTextField(field, { field = it }, label = { Text("a word to search or a file to find") }, singleLine = true, modifier = Modifier.fillMaxWidth())
     Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
