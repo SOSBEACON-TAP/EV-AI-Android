@@ -161,7 +161,18 @@ object ComputeClient {
         send("ask", JSONObject().put("text", text))
     }
 
-    fun startSession() { status = "Waiting for you to allow it on the computer..."; send("hello", JSONObject().put("name", Build.MODEL)) }
+    fun startSession() {
+        val waiting = "Waiting for you to allow it on the computer..."
+        status = waiting
+        send("hello", JSONObject().put("name", Build.MODEL))
+        Thread {                                      // the first message can be lost while the computer reconnects: try once more, then say what is wrong
+            try { Thread.sleep(7000) } catch (e: InterruptedException) { return@Thread }
+            if (!session && status == waiting) send("hello", JSONObject().put("name", Build.MODEL))
+            try { Thread.sleep(25000) } catch (e: InterruptedException) { return@Thread }
+            if (!session && status == waiting)
+                status = "No answer from the computer. Check that EV AI is running there (it can sit in the tray), that this phone's code is connected in its Settings, and that both devices have the right time."
+        }.start()
+    }
     fun endSession() { send("bye"); session = false }
 
     fun listen() {
