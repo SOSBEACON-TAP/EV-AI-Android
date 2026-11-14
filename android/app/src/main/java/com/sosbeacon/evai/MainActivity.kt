@@ -129,6 +129,7 @@ fun EvRoot() {
             if (splash) { LaunchSplash { splash = false }; return@MaterialTheme }
             var unlocked by remember { mutableStateOf(!AppLock.enabled) }
             if (!unlocked) { LockScreen { unlocked = true }; return@MaterialTheme }
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().then(frameBg).safeDrawingPadding()) {
                 if (screen == "home") Dashboard { screen = it }
                 else {
@@ -152,6 +153,8 @@ fun EvRoot() {
                         }
                     }
                 }
+            }
+            UltronCorruptionOverlay()
             }
         }
     }

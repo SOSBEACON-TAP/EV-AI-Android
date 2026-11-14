@@ -80,8 +80,16 @@ fun switchMode(scope: CoroutineScope, to: String) {
     if (Prefs.speak) Voice.speak(spoken)
     scope.launch {
         Ui.coreState = CoreState.SPEAKING
-        delay((spoken.length * 62L).coerceIn(900L, 4500L))
+        if (target == "ultron") {
+            // the screen is corrupted slowly (wires, then blocks, then everything, then an eye) while EV warns you;
+            // Ultron takes over when the static is at its thickest
+            Corruption.begin()
+            delay(Corruption.SPREAD_MS)
+        } else {
+            delay((spoken.length * 62L).coerceIn(900L, 4500L))
+        }
         applyMode(target)
+        if (target == "ultron") scope.launch { delay(Corruption.REVEAL_MS); Corruption.end() }
         Ui.messages.add(Ui.Msg(false, line))
         if (Prefs.speak) Voice.speakAs(target, line)      // flushes EV's voice: Ultron cuts in
         delay((line.length * 60L).coerceIn(1000L, 4000L))
