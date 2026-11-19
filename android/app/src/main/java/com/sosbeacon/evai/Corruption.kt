@@ -15,20 +15,18 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
-import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
 /**
- * Switching to Ultron: red static slowly corrupts the screen (thin traces first, then blocks, then everything), an eye
- * forms in the static and looks around, the picture glitches, and the Ultron screen takes over as the static clears.
+ * Switching to Ultron: a glitch in mixed reds slowly corrupts the screen (thin traces first, then torn slices and blocks,
+ * then everything drains to a grayish red), a sentinel scanner with a core that looks around appears, the picture
+ * glitches, and the Ultron screen takes over as the glitch clears.
  * Purely cosmetic: it draws over the screen and ignores nothing important - switchMode() decides when the mode changes.
  */
 object Corruption {
@@ -42,7 +40,10 @@ object Corruption {
     fun end() { start = 0L }
 }
 
-private val PALETTE = listOf(Color(0xFFFF2430), Color(0xFFAA0814), Color(0xFF1C0004), Color(0xFFFF604A))
+// a mix of reds: crimson, blood, maroon, ember, ash and a near-black void
+private val PALETTE = listOf(
+    Color(0xFFCC1230), Color(0xFF960A1C), Color(0xFF4C0612), Color(0xFFEC4C2C), Color(0xFF80484C), Color(0xFF0E0206),
+)
 
 private fun smooth(x: Float): Float {
     val t = x.coerceIn(0f, 1f)
@@ -100,7 +101,7 @@ private fun DrawScope.drawCorruption(t: Long, now: Long) {
     if (veil <= 0f) return
 
     // red tint grows as it spreads; near the end the base is almost solid so the new screen can be built unseen behind it
-    drawRect(Color(0xFFFF141E).copy(alpha = 0.55f * smooth(prog / 0.9f) * veil))
+    drawRect(Color(0xFF8A2A34).copy(alpha = 0.5f * smooth((prog - 0.4f) / 0.4f) * veil))
     if (prog > 0.8f) drawRect(Color(0xFF2A0006).copy(alpha = 0.93f * smooth((prog - 0.8f) / 0.12f) * veil))
 
     // 1) thin traces (the wires)
@@ -120,12 +121,20 @@ private fun DrawScope.drawCorruption(t: Long, now: Long) {
         }
     }
     // 2) blocks (the controls and tabs), 3) the whole screen
-    cells(18.dp.toPx(), 0.5f * smooth((prog - 0.24f) / 0.3f), frame, 0.9f * veil, 1)
-    cells(11.dp.toPx(), 0.9f * smooth((prog - 0.52f) / 0.3f), frame, 0.95f * veil, 2)
+    cells(26.dp.toPx(), 0.28f * smooth((prog - 0.24f) / 0.3f), frame, 0.8f * veil, 1)
+    cells(16.dp.toPx(), 0.3f * smooth((prog - 0.52f) / 0.3f), frame, 0.7f * veil, 2)
+    // torn slices: bands of the screen shifted sideways in mixed reds
+    val slices = (14 * smooth((prog - 0.3f) / 0.5f)).toInt()
+    repeat(slices) {
+        val y = rnd.nextFloat() * h
+        val bh = 3f + rnd.nextFloat() * (h * 0.04f)
+        val shift = (rnd.nextFloat() - 0.5f) * w * 0.25f
+        drawRect(PALETTE[rnd.nextInt(PALETTE.size)].copy(alpha = 0.55f * veil), Offset(shift, y), Size(w, bh))
+    }
 
-    // the eye: forms in the static and looks around
+    // the sentinel scanner: appears in the glitch, its core follows a slow wandering look
     val eyeT = smooth((prog - 0.74f) / 0.14f) * (1f - smooth((reveal - 0.1f) / 0.5f))
-    if (eyeT > 0.01f) drawEye(eyeT, now)
+    if (eyeT > 0.01f) drawSentinel(eyeT, now)
 
     // the glitch: the picture tears just before Ultron takes over, and for a moment after
     val glitch = if (reveal == 0f) smooth((prog - 0.9f) / 0.1f) else (1f - reveal * 3f).coerceAtLeast(0f)
@@ -140,37 +149,31 @@ private fun DrawScope.drawCorruption(t: Long, now: Long) {
     }
 }
 
-private fun DrawScope.drawEye(t: Float, now: Long) {
-    val w = size.width
-    val h = size.height
-    val cx = w / 2f
-    val cy = h / 2f
-    val ew = minOf(w * 0.8f, h * 1.25f)
-    var blink = 1f
-    val ph = (now % 4000L) / 1000f                        // a slow blink every few seconds
-    if (ph < 0.22f) blink = maxOf(0.08f, abs(ph - 0.11f) / 0.11f)
-    val eh = ew * 0.34f * blink * (0.6f + 0.4f * t)
-    val eye = Path().apply {
-        moveTo(cx - ew / 2f, cy)
-        quadraticBezierTo(cx, cy - eh * 1.9f, cx + ew / 2f, cy)
-        quadraticBezierTo(cx, cy + eh * 1.9f, cx - ew / 2f, cy)
-        close()
-    }
-    drawPath(eye, Color(0xFF0E0002).copy(alpha = t))
-    // the iris looks slowly around
+private fun DrawScope.drawSentinel(t: Float, now: Long) {
+    val cx = size.width / 2f
+    val cy = size.height / 2f
+    val r = minOf(size.width, size.height) * 0.3f
     val sec = now / 1000f
-    val ir = eh * 0.95f
-    val ic = Offset(cx + sin(sec * 0.9f) * ew * 0.13f, cy + cos(sec * 0.7f) * eh * 0.4f)
-    clipPath(eye) {
-        drawCircle(
-            Brush.radialGradient(
-                listOf(Color(0xFFFF463C).copy(alpha = t), Color(0xFFC8141C).copy(alpha = t), Color(0xFF460008).copy(alpha = t)),
-                center = ic, radius = ir,
-            ),
-            ir, ic,
+    drawCircle(Color(0xFF0E0206).copy(alpha = 0.9f * t), r, Offset(cx, cy))
+    drawCircle(Color(0xFFCC1230).copy(alpha = 0.9f * t), r, Offset(cx, cy), style = Stroke(width = 3.dp.toPx()))
+    // three counter-rotating arc rings
+    val rings = listOf(0.86f to Color(0xFFCC1230), 0.66f to Color(0xFFEC4C2C), 0.46f to Color(0xFF960A1C))
+    rings.forEachIndexed { i, (f, c) ->
+        val rr = r * f
+        val start = sec * (50f + i * 25f) * (if (i % 2 == 0) 1f else -1f)
+        drawArc(
+            c.copy(alpha = 0.9f * t), start, 240f, false,
+            Offset(cx - rr, cy - rr), Size(rr * 2f, rr * 2f), style = Stroke(width = 2.5.dp.toPx()),
         )
-        drawCircle(Color(0xFF080002).copy(alpha = t), ir * 0.38f, ic)                     // the pupil
-        drawCircle(Color(0xFFFFD2C8).copy(alpha = 0.85f * t), ir * 0.07f, Offset(ic.x - ir * 0.16f, ic.y - ir * 0.2f))   // a glint
     }
-    drawPath(eye, Color(0xFFFF323C).copy(alpha = 0.92f * t), style = Stroke(width = 3.dp.toPx()))
+    // the core with a vertical slit that wanders
+    val ic = Offset(cx + sin(sec * 0.9f) * r * 0.18f, cy + cos(sec * 0.7f) * r * 0.12f)
+    drawCircle(
+        Brush.radialGradient(
+            listOf(Color(0xFFFFD2C8).copy(alpha = t), Color(0xFFCC1230).copy(alpha = t), Color(0xFF4C0612).copy(alpha = 0f)),
+            center = ic, radius = r * 0.3f,
+        ),
+        r * 0.3f, ic,
+    )
+    drawRect(Color(0xFF080002).copy(alpha = 0.9f * t), Offset(ic.x - r * 0.025f, ic.y - r * 0.2f), Size(r * 0.05f, r * 0.4f))
 }
