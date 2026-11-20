@@ -2,6 +2,7 @@ package com.sosbeacon.evai
 
 import android.os.SystemClock
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -100,7 +101,7 @@ fun BodyHud(accent: Color) {
     LaunchedEffect(Unit) { while (true) withFrameNanos { tick = it } }
     Box(Modifier.fillMaxWidth().height(190.dp)) {
         Canvas(Modifier.fillMaxSize().pointerInput(Unit) {
-            androidx.compose.foundation.gestures.detectTapGestures { p ->
+            detectTapGestures { p ->
                 val sc = minOf(size.width / 100f, size.height / 200f)
                 val ox = (size.width - 100f * sc) / 2f
                 val x = (p.x - ox) / sc
