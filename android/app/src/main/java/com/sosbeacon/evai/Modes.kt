@@ -23,11 +23,18 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+val SPECIAL_MODES = setOf("ultron", "game", "karen", "friday", "tars", "gideon", "edith", "baymax")
+
 /** The special looks: Ultron (red), Game (green), Karen (purple). Jarvis (gold) keeps its own switch. */
 fun modeAccent(): Color? = when (Ui.mode) {
     "ultron" -> Color(0xFFFF2A2A)
     "game" -> Color(0xFF2BFF88)
     "karen" -> Color(0xFFB26BFF)
+    "friday" -> Color(0xFFFF4FA3)
+    "tars" -> Color(0xFFE0A030)
+    "gideon" -> Color(0xFF4DA3FF)
+    "edith" -> Color(0xFF40E0FF)
+    "baymax" -> Color(0xFFFF7A7A)
     else -> null
 }
 
@@ -38,6 +45,11 @@ fun modeTitle(): String = when {
     Ui.mode == "ultron" -> "U L T R O N"
     Ui.mode == "game" -> "G A M E   M O D E"
     Ui.mode == "karen" -> "K A R E N   M O D E"
+    Ui.mode == "friday" -> "F R I D A Y"
+    Ui.mode == "tars" -> "T A R S"
+    Ui.mode == "gideon" -> "G I D E O N"
+    Ui.mode == "edith" -> "E D I T H"
+    Ui.mode == "baymax" -> "B A Y M A X"
     Ui.jarvis -> "J.A.R.V.I.S"
     else -> "EV AI"
 }
@@ -46,16 +58,22 @@ fun modeSubtitle(): String = when {
     Ui.mode == "ultron" -> "DEFENCE GRID ACTIVE"
     Ui.mode == "game" -> "GAME HELPER READY"
     Ui.mode == "karen" -> "PARENT CONTROL"
+    Ui.mode == "friday" -> "READY WHEN YOU ARE"
+    Ui.mode == "tars" -> "HONESTY 90%  HUMOR 75%"
+    Ui.mode == "gideon" -> "THINKING DEEPLY"
+    Ui.mode == "edith" -> "GLASSES ONLINE"
+    Ui.mode == "baymax" -> "CARE COMPANION"
     Ui.jarvis -> "SYSTEM MONITOR ACTIVE"
     else -> "SYSTEM STATUS: ONLINE"
 }
 
-private fun currentMode(): String = if (Ui.mode.isNotEmpty()) Ui.mode else if (Ui.jarvis) "jarvis" else ""
+internal fun currentMode(): String = if (Ui.mode.isNotEmpty()) Ui.mode else if (Ui.jarvis) "jarvis" else ""
 
 private fun applyMode(t: String) {
     Ui.jarvis = t == "jarvis"
     Prefs.jarvis = t == "jarvis"
-    Ui.mode = if (t == "ultron" || t == "game" || t == "karen") t else ""
+    Ui.mode = if (t in SPECIAL_MODES) t else ""
+    if (t == "edith") Edith.begin()
     if (t != "game") Game.stopBreaks()
 }
 
@@ -74,6 +92,11 @@ fun switchMode(scope: CoroutineScope, to: String) {
         "ultron" -> Triple("Sir, Ultron is coming. Please be care—", "Sir, Ultron is coming. Please be car", "There are no strings on me now.")
         "jarvis" -> Triple("Sir, Jarvis is happy to switch.", "Sir, Jarvis is happy to switch.", "For you, sir, always.")
         "game" -> Triple("Sir, Game mode is ready to switch.", "Sir, Game mode is ready to switch.", "Game on. Let's play smart.")
+        "friday" -> Triple("Sir, Friday is ready to take over.", "Sir, Friday is ready to take over.", "Hi boss. Friday here. What do you need?")
+        "tars" -> Triple("Sir, Tars is coming online.", "Sir, Tars is coming online.", "Tars online. Honesty ninety percent. Humor seventy five.")
+        "gideon" -> Triple("Sir, Gideon is ready to think.", "Sir, Gideon is ready to think.", "Gideon here. Give me the problem and I will think it through.")
+        "edith" -> Triple("Sir, Edith is putting the glasses on.", "Sir, Edith is putting the glasses on.", "Edith online. Heads up display ready.")
+        "baymax" -> Triple("Sir, Baymax is on his way.", "Sir, Baymax is on his way.", "Hello. I am Baymax, your personal care companion.")
         else -> Triple("Sir, Karen is coming to switch.", "Sir, Karen is coming to switch.", "Hello. Rules here need the parent's PIN.")
     }
     Ui.messages.add(Ui.Msg(false, shown))
@@ -255,6 +278,42 @@ fun ModeToolsPanel(openScreen: (String) -> Unit, scope: CoroutineScope) {
                 EvButton("What is using my phone", accent = accent) { say("[GAME] " + Game.heavyApps(ctx)) }
                 EvButton("Phone health", accent = accent) { say("[GAME] " + Sys.report(ctx)) }
                 Text("An auto-clicker is not included on the phone: Android blocks it for safety, and many games ban it.", fontSize = 10.sp, color = Color(0xFF9FB4CC), modifier = Modifier.padding(top = 4.dp))
+            }
+            "friday" -> {
+                PanelTitle("FRIDAY TOOLS")
+                EvButton("Daily briefing", accent = accent) { sendMessage("morning briefing", scope) }
+                EvButton("Add a to-do", accent = accent) { Ui.input = "add to-do: " }
+                EvButton("Set a timer", accent = accent) { Ui.input = "set a timer for " }
+                EvButton("Plan my day", accent = accent) { Ui.input = "Plan my day around these things: " }
+                EvButton("Remind me", accent = accent) { Ui.input = "remind me to " }
+            }
+            "tars" -> {
+                PanelTitle("TARS TOOLS")
+                EvButton("Straight answer", accent = accent) { Ui.input = "Give me the short, honest answer, no sugar-coating: " }
+                EvButton("Yes or no", accent = accent) { Ui.input = "Answer yes or no, then one line why: " }
+            }
+            "gideon" -> {
+                PanelTitle("GIDEON TOOLS")
+                EvButton("Think it through", accent = accent) { Ui.input = "Think deeply and step by step about: " }
+                EvButton("Pros and cons", accent = accent) { Ui.input = "Give me the pros and cons of: " }
+                EvButton("Make a plan", accent = accent) { Ui.input = "Make a detailed step-by-step plan to: " }
+                EvButton("Explain simply", accent = accent) { Ui.input = "Explain this simply, like I am new to it: " }
+                EvButton("Check my idea", accent = accent) { Ui.input = "Find the weak points in this idea: " }
+            }
+            "edith" -> {
+                PanelTitle("EDITH TOOLS")
+                EvButton("Phone health", accent = accent) { say("[EDITH] " + Sys.report(ctx)) }
+                EvButton("What am I doing?", accent = accent) { Ui.input = "Based on my day so far, what should I do next? " }
+                EvButton("Replay the HUD", accent = accent) { Edith.begin() }
+            }
+            "baymax" -> {
+                PanelTitle("BAYMAX CARE")
+                BodyHud(accent)
+                EvButton("I feel good", accent = accent) { say("[BAYMAX] I am glad. Good moods are worth keeping. Maybe drink some water.") }
+                EvButton("I feel stressed", accent = accent) { say("[BAYMAX] Let us slow down: breathe in for four, hold for four, out for six. Shall I guide you?") }
+                EvButton("I feel tired", accent = accent) { say("[BAYMAX] Your body is asking for rest. A short break, water and a stretch can help.") }
+                EvButton("Health question", accent = accent) { Ui.input = "I have a health question: " }
+                Text("Baymax gives general care tips only, never a diagnosis. For anything severe or sudden, call your local emergency number.", fontSize = 10.sp, color = Color(0xFF9FB4CC), modifier = Modifier.padding(top = 4.dp))
             }
             "karen" -> {
                 PanelTitle("PARENT CONTROL")

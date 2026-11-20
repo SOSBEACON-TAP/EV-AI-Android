@@ -8,6 +8,8 @@ import android.graphics.Bitmap
 import android.os.Build
 import android.provider.MediaStore
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -72,7 +74,7 @@ fun KeyboardMode(onClose: () -> Unit) {
     var ctrl by remember { mutableStateOf(false) }
     var alt by remember { mutableStateOf(false) }
     var win by remember { mutableStateOf(false) }
-    val accent = Ui.accentColor()
+    val accent = Color(0xFF3D9BFF)                       // the keyboard is always blue
     val curvePx = with(LocalDensity.current) { 7.dp.toPx() }
 
     fun press(k: K) {
@@ -100,7 +102,7 @@ fun KeyboardMode(onClose: () -> Unit) {
     }
 
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxSize(), color = Color(0xFF05060A)) {
+        Surface(Modifier.fillMaxSize(), color = Color(0xFF030B1E)) {
             Column(Modifier.fillMaxSize().padding(8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("KEYBOARD", color = accent, fontSize = 12.sp, letterSpacing = 3.sp, modifier = Modifier.weight(1f))
@@ -116,7 +118,7 @@ fun KeyboardMode(onClose: () -> Unit) {
                     Column(Modifier.weight(0.32f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Touchpad(Modifier.weight(1f).fillMaxHeight(), accent)
-                            ScrollStrip(Modifier.width(30.dp).fillMaxHeight(), accent)
+                            ScrollStrip(Modifier.width(46.dp).fillMaxHeight(), accent)
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().height(40.dp)) {
                             PadButton("Left click", Modifier.weight(1f), accent) { c.send("click") }
@@ -135,7 +137,7 @@ fun KeyboardMode(onClose: () -> Unit) {
                                     Box(
                                         Modifier.weight(k.w).fillMaxHeight()
                                             .graphicsLayer { translationY = x * x * curvePx; rotationZ = x * 4f }
-                                            .background(if (on) accent.copy(alpha = 0.55f) else Color(0xFF0B1A2A), RoundedCornerShape(6.dp))
+                                            .background(if (on) accent.copy(alpha = 0.55f) else Color(0xFF11408A), RoundedCornerShape(6.dp))
                                             .border(1.dp, if (on) accent else accent.copy(alpha = 0.45f), RoundedCornerShape(6.dp))
                                             .clickable { press(k) },
                                         contentAlignment = Alignment.Center,
@@ -152,7 +154,7 @@ fun KeyboardMode(onClose: () -> Unit) {
 
 @Composable
 private fun PadButton(text: String, modifier: Modifier, accent: Color, onClick: () -> Unit) {
-    Box(modifier.fillMaxHeight().background(Color(0xFF0B1A2A), RoundedCornerShape(8.dp)).border(1.dp, accent.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+    Box(modifier.fillMaxHeight().background(Color(0xFF11408A), RoundedCornerShape(8.dp)).border(1.dp, accent.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
         .clickable { onClick() }, contentAlignment = Alignment.Center) { Text(text, color = Color(0xFFD6ECFA), fontSize = 12.sp) }
 }
 
@@ -160,7 +162,7 @@ private fun PadButton(text: String, modifier: Modifier, accent: Color, onClick: 
 @Composable
 private fun Touchpad(modifier: Modifier, accent: Color) {
     val c = ComputeClient
-    Box(modifier.background(Color(0xFF08131F), RoundedCornerShape(14.dp)).border(1.dp, accent.copy(alpha = 0.6f), RoundedCornerShape(14.dp))
+    Box(modifier.background(Color(0xFF0A2A5C), RoundedCornerShape(14.dp)).border(1.dp, accent.copy(alpha = 0.6f), RoundedCornerShape(14.dp))
         .pointerInput(Unit) {
             detectTapGestures(
                 onTap = { c.send("click") },
@@ -185,17 +187,30 @@ private fun Touchpad(modifier: Modifier, accent: Color) {
 @Composable
 private fun ScrollStrip(modifier: Modifier, accent: Color) {
     val c = ComputeClient
-    Box(modifier.background(Color(0xFF08131F), RoundedCornerShape(10.dp)).border(1.dp, accent.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+    var offset by remember { mutableStateOf(0f) }               // the notches turn while you drag: a real mouse wheel
+    Box(modifier.background(Color(0xFF0A2A5C), RoundedCornerShape(12.dp)).border(1.5.dp, accent.copy(alpha = 0.7f), RoundedCornerShape(12.dp))
         .pointerInput(Unit) {
             var acc = 0f; var last = 0L
             detectVerticalDragGestures { change, dy ->
-                change.consume(); acc += dy
+                change.consume(); acc += dy; offset += dy
                 val now = System.currentTimeMillis()
-                if (now - last > 100 && kotlin.math.abs(acc) > 20f) {
-                    c.send("scroll", JSONObject().put("dy", (acc / 20f).toInt().coerceIn(-10, 10))); acc = 0f; last = now
+                if (now - last > 80 && kotlin.math.abs(acc) > 14f) {
+                    c.send("scroll", JSONObject().put("dy", (acc / 14f).toInt().coerceIn(-10, 10))); acc = 0f; last = now
                 }
             }
-        }, contentAlignment = Alignment.Center) { Text("⇅", color = accent.copy(alpha = 0.5f), fontSize = 14.sp) }
+        }) {
+        Canvas(Modifier.fillMaxSize()) {
+            val gap = 14.dp.toPx()
+            var y = ((offset % gap) + gap) % gap
+            while (y < size.height) {
+                val edge = kotlin.math.abs(y - size.height / 2f) / (size.height / 2f)
+                val a = (1f - edge * 0.75f).coerceIn(0.15f, 1f)
+                drawLine(accent.copy(alpha = a), Offset(6.dp.toPx(), y), Offset(size.width - 6.dp.toPx(), y), strokeWidth = 2.dp.toPx())
+                y += gap
+            }
+        }
+        Text("WHEEL", color = accent.copy(alpha = 0.8f), fontSize = 8.sp, letterSpacing = 1.sp, modifier = Modifier.align(Alignment.TopCenter).padding(top = 3.dp))
+    }
 }
 
 private fun saveShot(ctx: Context, bmp: Bitmap): Boolean {

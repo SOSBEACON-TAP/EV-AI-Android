@@ -27,6 +27,10 @@ object Ui {
     var accent by mutableStateOf(Prefs.accent)
     var fontScale by mutableStateOf(Prefs.fontScale)
     var personality by mutableStateOf(Prefs.personality)
+    /** The mode wheel is open. */
+    var wheel by mutableStateOf(false)
+    /** Overdrive turns the core faster (1 = normal). */
+    var boost by mutableStateOf(1f)
 
     class Msg(val fromUser: Boolean, val text: String)
     val messages = mutableStateListOf<Msg>()

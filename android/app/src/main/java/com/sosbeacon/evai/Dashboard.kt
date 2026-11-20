@@ -246,7 +246,8 @@ fun CorePanel(modifier: Modifier, scope: CoroutineScope) {
             EvButton(if (Ui.jarvis) "⚡ Switch back to EV" else "⚡ Switch to Jarvis",
                 modifier = Modifier.fillMaxWidth(0.7f), accent = if (Ui.jarvis) Color(0xFFFFC400) else Color(0xFF5A96DC),
                 selected = Ui.jarvis) { switchMode(scope, "jarvis") }
-            AiCore(Modifier.weight(1f).fillMaxWidth())
+            AiCore(Modifier.weight(1f).fillMaxWidth().clickable { Ui.wheel = true })
+            EvButton("◎ Mode wheel", modifier = Modifier.fillMaxWidth(0.7f), accent = Color(0xFF5AD7FF)) { Ui.wheel = true }
             EvButton(if (Ui.mode == "ultron") "☠ Switch back to EV" else "☠ Switch to Ultron",
                 modifier = Modifier.fillMaxWidth(0.7f), accent = Color(0xFFFF2A2A), selected = Ui.mode == "ultron") { switchMode(scope, "ultron") }
             Row(Modifier.fillMaxWidth(0.9f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {

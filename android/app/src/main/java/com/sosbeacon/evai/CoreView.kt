@@ -29,7 +29,7 @@ import kotlin.math.sin
 fun AiCore(modifier: Modifier = Modifier) {
     var angle by remember { mutableFloatStateOf(0f) }
     var phase by remember { mutableFloatStateOf(0f) }
-    val speed by rememberUpdatedState(Ui.coreState.speed)
+    val speed by rememberUpdatedState(Ui.coreState.speed * Ui.boost)
 
     LaunchedEffect(Unit) {
         var last = 0L

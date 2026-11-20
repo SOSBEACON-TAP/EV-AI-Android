@@ -29,7 +29,8 @@ object Voice {
     }
 
     /** A mode character (Ultron, Game, Karen) speaks with its own pitch and speed, so it sounds different from EV. */
-    private val CHARACTER = mapOf("ultron" to (0.55f to 0.8f), "game" to (1.3f to 1.3f), "karen" to (1.4f to 0.95f), "jarvis" to (0.8f to 0.92f))
+    private val CHARACTER = mapOf("ultron" to (0.55f to 0.8f), "game" to (1.3f to 1.3f), "karen" to (1.4f to 0.95f), "jarvis" to (0.8f to 0.92f),
+        "friday" to (1.25f to 1.05f), "tars" to (0.7f to 0.9f), "gideon" to (0.9f to 0.9f), "baymax" to (1.05f to 0.8f), "edith" to (1.2f to 1.0f))
 
     fun speakAs(who: String, text: String) {
         if (text.isBlank()) return
