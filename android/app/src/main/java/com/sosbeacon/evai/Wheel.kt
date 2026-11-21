@@ -89,7 +89,6 @@ fun DrawScope.drawReactor(center: Offset, r: Float, angle: Float, glow: Color, p
 @Composable
 fun ModeWheelOverlay() {
     if (!Ui.wheel) return
-    val scope = rememberCoroutineScope()
     var angle by remember { mutableFloatStateOf(0f) }
     var pulse by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(Unit) {
@@ -129,13 +128,16 @@ fun ModeWheelOverlay() {
                     Modifier.offset(x.dp, y.dp).size(width = 62.dp, height = 28.dp)
                         .background(if (on) chip.color.copy(alpha = 0.85f) else Color(0xFF0B1A2A), RoundedCornerShape(8.dp))
                         .border(1.5.dp, chip.color, RoundedCornerShape(8.dp))
-                        .clickable { Ui.wheel = false; pick(scope, chip.key) },
+                        .clickable { Ui.wheel = false; pick(AppScope, chip.key) },
                     contentAlignment = Alignment.Center,
                 ) { Text(chip.label, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = if (on) Color(0xFF06101C) else chip.color, maxLines = 1) }
             }
         }
     }
 }
+
+/** A scope that lives as long as the app, so a mode switch is not cancelled when the wheel closes. */
+val AppScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main)
 
 private fun pick(scope: kotlinx.coroutines.CoroutineScope, key: String) {
     when (key) {

@@ -57,50 +57,13 @@ fun AiCore(modifier: Modifier = Modifier) {
         val cx = center.x
         val cy = center.y
 
-        // faint web
-        val web = accent.copy(alpha = 45f / 255f)
-        for (f in floatArrayOf(0.35f, 0.6f, 0.85f, 1.05f)) {
-            drawCircle(web, radius * f, center, style = Stroke(1f))
-        }
-        val spoke = -angle * 0.3f
-        for (i in 0 until 8) {
-            val a = (spoke + i * 45f) * PI.toFloat() / 180f
-            drawLine(web, center, Offset(cx + radius * 1.05f * cos(a), cy + radius * 1.05f * sin(a)), strokeWidth = 1f)
-        }
-
-        // two diagonal beams
-        fun beam(deg: Float, color: Color, width: Float) {
-            val a = deg * PI.toFloat() / 180f
-            val len = radius * 1.35f
-            val dx = cos(a) * len
-            val dy = sin(a) * len
-            drawLine(color.copy(alpha = 190f / 255f), Offset(cx - dx, cy - dy), Offset(cx + dx, cy + dy),
-                strokeWidth = width, cap = StrokeCap.Round)
-        }
-        beam(angle * 1.1f + 20f, red, 1.5.dp.toPx())
-        beam(-angle * 0.9f - 20f, blue, 1.5.dp.toPx())
-
-        // tilted orbit rings
-        fun ring(deg: Float, tilt: Float, color: Color, squash: Float, frac: Float, widthDp: Float, alpha: Int) {
-            withTransform({
-                rotate(deg, center)
-                scale(1f, squash, center)
-                rotate(tilt, center)
-            }) {
-                drawCircle(color.copy(alpha = alpha / 255f), radius * frac, center,
-                    style = Stroke(widthDp.dp.toPx(), cap = StrokeCap.Round))
-            }
-        }
-        ring(angle, 15f, red, 0.45f, 0.92f, 3.5f, 210)
-        ring(-angle * 1.15f, -15f, blue, 0.45f, 0.92f, 3.5f, 210)
-        ring(-angle * 0.7f + 60f, 55f, red, 0.65f, 0.72f, 2.2f, 150)
-        ring(angle * 0.85f - 60f, -55f, blue, 0.65f, 0.72f, 2.2f, 150)
-        ring(angle * 1.6f, 35f, red, 0.3f, 0.42f, 1.5f, 170)
-        ring(-angle * 1.8f, -35f, blue, 0.3f, 0.42f, 1.5f, 170)
-
-        // pulsing centre
         val pulse = 0.5f + 0.5f * sin(phase * 2f * PI.toFloat())
-        drawCircle(accent.copy(alpha = 60f / 255f), radius * 0.22f + pulse * 6.dp.toPx(), center)
-        drawCircle(lerp(accent, Color.White, 0.3f).copy(alpha = 230f / 255f), radius * 0.08f + pulse * 2.dp.toPx(), center)
+        val fk = Faces.key()
+        val bmp = if (fk.isEmpty()) null else Faces.bitmap(fk)
+        if (bmp != null) {
+            with(Faces) { drawFace(fk, bmp, cx, cy, radius, accent, angle, phase, state, System.nanoTime() / 1_000_000_000f) }
+        } else {
+            drawReactor(center, radius, angle, accent, pulse)          // the same arc reactor as the computer version
+        }
     }
 }
