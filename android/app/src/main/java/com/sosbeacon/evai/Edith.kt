@@ -5,6 +5,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -93,29 +96,28 @@ fun EdithOverlay() {
     }
 }
 
-/** Baymax's body: tap a part to start your question about it. General care tips only, never a diagnosis. */
+/** Baymax's body: your X-ray picture; tap a part to start your question about it. General care tips only, never a diagnosis. */
 @Composable
 fun BodyHud(accent: Color) {
     var picked by remember { androidx.compose.runtime.mutableStateOf("") }
     var tick by remember { mutableLongStateOf(0L) }
     LaunchedEffect(Unit) { while (true) withFrameNanos { tick = it } }
-    Box(Modifier.fillMaxWidth().height(190.dp)) {
-        Canvas(Modifier.fillMaxSize().pointerInput(Unit) {
+    val zones = listOf(
+        "head" to floatArrayOf(0.39f, 0.03f, 0.62f, 0.17f),
+        "chest" to floatArrayOf(0.27f, 0.175f, 0.73f, 0.38f),
+        "stomach" to floatArrayOf(0.30f, 0.38f, 0.71f, 0.565f),
+        "left arm" to floatArrayOf(0.05f, 0.175f, 0.30f, 0.58f),
+        "right arm" to floatArrayOf(0.73f, 0.175f, 0.96f, 0.58f),
+        "left leg" to floatArrayOf(0.30f, 0.565f, 0.52f, 0.98f),
+        "right leg" to floatArrayOf(0.52f, 0.565f, 0.71f, 0.98f),
+    )
+    val ratio = 296f / 604f
+    Box(Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.TopCenter) {
+        Box(Modifier.fillMaxHeight().aspectRatio(ratio).pointerInput(Unit) {
             detectTapGestures { p ->
-                val sc = minOf(size.width / 100f, size.height / 200f)
-                val ox = (size.width - 100f * sc) / 2f
-                val x = (p.x - ox) / sc
-                val y = p.y / sc
-                val zone = when {
-                    y in 4f..32f && x in 38f..62f -> "head"
-                    y in 40f..76f && x in 31f..69f -> "chest"
-                    y in 76f..110f && x in 33f..67f -> "stomach"
-                    y in 40f..112f && x in 8f..28f -> "left arm"
-                    y in 40f..112f && x in 72f..92f -> "right arm"
-                    y in 112f..196f && x in 33f..50f -> "left leg"
-                    y in 112f..196f && x in 50f..67f -> "right leg"
-                    else -> ""
-                }
+                val fx = p.x / size.width
+                val fy = p.y / size.height
+                val zone = zones.firstOrNull { (_, r) -> fx in r[0]..r[2] && fy in r[1]..r[3] }?.first ?: ""
                 if (zone.isNotEmpty()) {
                     picked = zone
                     Ui.messages.add(Ui.Msg(false, "[BAYMAX] Your $zone. Tell me what you feel there and for how long. I can only give general care tips, not a diagnosis. If it is severe or sudden, please call your local emergency number."))
@@ -123,18 +125,22 @@ fun BodyHud(accent: Color) {
                 }
             }
         }) {
-            val sc = minOf(size.width / 100f, size.height / 200f)
-            val ox = (size.width - 100f * sc) / 2f
-            val frame = tick
-            fun r(x: Float, y: Float, w: Float, h: Float, rad: Float) =
-                drawRoundRect(accent.copy(alpha = 0.9f), Offset(ox + x * sc, y * sc), Size(w * sc, h * sc), androidx.compose.ui.geometry.CornerRadius(rad * sc), style = Stroke(1.6f))
-            drawOval(accent.copy(alpha = 0.9f), Offset(ox + 40f * sc, 5f * sc), Size(20f * sc, 24f * sc), style = Stroke(1.6f))
-            r(46f, 29f, 8f, 8f, 2f); r(31f, 37f, 38f, 42f, 8f); r(33f, 76f, 34f, 36f, 8f)
-            r(11f, 40f, 15f, 70f, 7f); r(74f, 40f, 15f, 70f, 7f); r(34f, 110f, 14f, 84f, 7f); r(52f, 110f, 14f, 84f, 7f)
-            val beat = 1f + 0.18f * maxOf(0f, sin((frame / 1_000_000L) / 160f)).let { it * it * it }
-            drawCircle(accent, 3.2f * sc * beat, Offset(ox + 56f * sc, 50f * sc))
-            drawLine(accent.copy(alpha = 0.5f), Offset(ox + 6f * sc, (((frame / 1_000_000L) % 3500L) / 3500f) * 196f * sc + 4f * sc),
-                Offset(ox + 94f * sc, (((frame / 1_000_000L) % 3500L) / 3500f) * 196f * sc + 4f * sc), 2f)
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(R.drawable.body_xray),
+                contentDescription = "Body", modifier = Modifier.fillMaxSize(),
+            )
+            Canvas(Modifier.fillMaxSize()) {
+                val ms = tick / 1_000_000L
+                zones.firstOrNull { it.first == picked }?.let { (_, r) ->
+                    drawRoundRect(Color(0x3C78BEFF), Offset(r[0] * size.width, r[1] * size.height),
+                        Size((r[2] - r[0]) * size.width, (r[3] - r[1]) * size.height), androidx.compose.ui.geometry.CornerRadius(14f))
+                    drawRoundRect(Color(0xE696D7FF), Offset(r[0] * size.width, r[1] * size.height),
+                        Size((r[2] - r[0]) * size.width, (r[3] - r[1]) * size.height), androidx.compose.ui.geometry.CornerRadius(14f), style = Stroke(2f))
+                }
+                val y = ((ms % 3500L) / 3500f) * size.height
+                drawRect(Brush.verticalGradient(listOf(Color(0x0078C8FF), Color(0x6E96D7FF), Color(0x0078C8FF)), startY = y - 28f, endY = y + 28f),
+                    Offset(0f, y - 28f), Size(size.width, 56f))
+            }
         }
         Text(if (picked.isEmpty()) "TOUCH WHERE YOU FEEL SOMETHING" else picked.uppercase(), fontSize = 8.sp, letterSpacing = 1.sp, color = accent,
             modifier = Modifier.align(Alignment.TopCenter))

@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,7 +49,6 @@ private val CHIPS = listOf(
     Chip("gideon", "GIDEON", Color(0xFF4DA3FF)),
     Chip("edith", "EDITH", Color(0xFF40E0FF)),
     Chip("baymax", "BAYMAX", Color(0xFFFF7A7A)),
-    Chip("overdrive", "OVERDRIVE", Color(0xFFFF9A1E)),
 )
 
 /** The arc reactor: steel housing, turning coil segments, glowing ring and core. [angle] turns it, [glow] colours it. */
@@ -118,12 +119,20 @@ fun ModeWheelOverlay() {
                 val glow = CHIPS.firstOrNull { it.key == active }?.color ?: Color(0xFF5AD7FF)
                 drawReactor(c, size.minDimension * 0.24f, angle, glow, pulse)
             }
+            // the arc reactor in the centre is the Overdrive button
+            val od = Overdrive.running()
+            Box(Modifier.size(side * 0.48f).clip(androidx.compose.foundation.shape.CircleShape)
+                .clickable { Ui.wheel = false; Overdrive.begin() }, contentAlignment = Alignment.Center) {
+                Text(if (od) "OVERDRIVE ON" else "OVERDRIVE", fontSize = 9.sp, fontWeight = FontWeight.Bold,
+                    color = Color(0xFF06101C), modifier = Modifier.offset(y = 34.dp)
+                        .background(Color(0xFFFF9A1E).copy(alpha = 0.9f), RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 2.dp))
+            }
             val radius = 128f
             CHIPS.forEachIndexed { i, chip ->
                 val a = Math.toRadians((-90.0 + i * 360.0 / CHIPS.size))
                 val x = (radius * cos(a)).toFloat()
                 val y = (radius * sin(a)).toFloat()
-                val on = chip.key == active || (chip.key == "overdrive" && Overdrive.running())
+                val on = chip.key == active
                 Box(
                     Modifier.offset(x.dp, y.dp).size(width = 62.dp, height = 28.dp)
                         .background(if (on) chip.color.copy(alpha = 0.85f) else Color(0xFF0B1A2A), RoundedCornerShape(8.dp))
@@ -141,7 +150,6 @@ val AppScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJo
 
 private fun pick(scope: kotlinx.coroutines.CoroutineScope, key: String) {
     when (key) {
-        "overdrive" -> Overdrive.begin()
         "ev" -> { val cur = currentMode(); if (cur.isNotEmpty()) switchMode(scope, cur) }
         else -> switchMode(scope, key)
     }
