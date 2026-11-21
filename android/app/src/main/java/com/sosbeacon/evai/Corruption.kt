@@ -133,8 +133,6 @@ private fun DrawScope.drawCorruption(t: Long, now: Long) {
     }
 
     // the sentinel scanner: appears in the glitch, its core follows a slow wandering look
-    val eyeT = smooth((prog - 0.74f) / 0.14f) * (1f - smooth((reveal - 0.1f) / 0.5f))
-    if (eyeT > 0.01f) drawSentinel(eyeT, now)
 
     // the glitch: the picture tears just before Ultron takes over, and for a moment after
     val glitch = if (reveal == 0f) smooth((prog - 0.9f) / 0.1f) else (1f - reveal * 3f).coerceAtLeast(0f)
@@ -147,33 +145,4 @@ private fun DrawScope.drawCorruption(t: Long, now: Long) {
         }
         if (rnd.nextFloat() < 0.3f * glitch) drawRect(Color(0xFFFF1E28).copy(alpha = 0.45f * rnd.nextFloat()))
     }
-}
-
-private fun DrawScope.drawSentinel(t: Float, now: Long) {
-    val cx = size.width / 2f
-    val cy = size.height / 2f
-    val r = minOf(size.width, size.height) * 0.3f
-    val sec = now / 1000f
-    drawCircle(Color(0xFF0E0206).copy(alpha = 0.9f * t), r, Offset(cx, cy))
-    drawCircle(Color(0xFFCC1230).copy(alpha = 0.9f * t), r, Offset(cx, cy), style = Stroke(width = 3.dp.toPx()))
-    // three counter-rotating arc rings
-    val rings = listOf(0.86f to Color(0xFFCC1230), 0.66f to Color(0xFFEC4C2C), 0.46f to Color(0xFF960A1C))
-    rings.forEachIndexed { i, (f, c) ->
-        val rr = r * f
-        val start = sec * (50f + i * 25f) * (if (i % 2 == 0) 1f else -1f)
-        drawArc(
-            c.copy(alpha = 0.9f * t), start, 240f, false,
-            Offset(cx - rr, cy - rr), Size(rr * 2f, rr * 2f), style = Stroke(width = 2.5.dp.toPx()),
-        )
-    }
-    // the core with a vertical slit that wanders
-    val ic = Offset(cx + sin(sec * 0.9f) * r * 0.18f, cy + cos(sec * 0.7f) * r * 0.12f)
-    drawCircle(
-        Brush.radialGradient(
-            listOf(Color(0xFFFFD2C8).copy(alpha = t), Color(0xFFCC1230).copy(alpha = t), Color(0xFF4C0612).copy(alpha = 0f)),
-            center = ic, radius = r * 0.3f,
-        ),
-        r * 0.3f, ic,
-    )
-    drawRect(Color(0xFF080002).copy(alpha = 0.9f * t), Offset(ic.x - r * 0.025f, ic.y - r * 0.2f), Size(r * 0.05f, r * 0.4f))
 }

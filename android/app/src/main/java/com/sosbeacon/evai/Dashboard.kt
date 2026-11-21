@@ -204,6 +204,10 @@ fun ToolsPanel(openScreen: (String) -> Unit) {
         EvButton("📊 App Insights", accent = red) { openScreen("insights") }
         EvButton("🔎 File Finder", accent = red) { openScreen("files") }
         EvButton("💻 Computer", accent = red) { openScreen("computer") }
+        EvButton("💬 WhatsApp", accent = red) { Ui.compose = "whatsapp" }
+        EvButton("✉ Email", accent = red) { Ui.compose = "email" }
+        EvButton("🗂 Mission Spaces", accent = red) { Ui.compose = "spaces" }
+        EvButton(if (Shield.on) "🛡 Privacy shield: ON" else "🛡 Privacy shield", accent = red) { Shield.toggle() }
         EvButton("📡 Radar", accent = red) { openScreen("radar") }
         EvButton("🎞 Scroll counter", accent = red) { openScreen("scrolls") }
         EvButton("🩺 Error Doctor", accent = red) { openScreen("doctor") }
@@ -243,17 +247,8 @@ fun QuickPanel(scope: CoroutineScope) {
 fun CorePanel(modifier: Modifier, scope: CoroutineScope) {
     Glass(modifier, Color(0xFF8C96B4)) {
         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-            EvButton(if (Ui.jarvis) "⚡ Switch back to EV" else "⚡ Switch to Jarvis",
-                modifier = Modifier.fillMaxWidth(0.7f), accent = if (Ui.jarvis) Color(0xFFFFC400) else Color(0xFF5A96DC),
-                selected = Ui.jarvis) { switchMode(scope, "jarvis") }
             AiCore(Modifier.weight(1f).fillMaxWidth().clickable { Ui.wheel = true })
             EvButton("◎ Mode wheel", modifier = Modifier.fillMaxWidth(0.7f), accent = Color(0xFF5AD7FF)) { Ui.wheel = true }
-            EvButton(if (Ui.mode == "ultron") "☠ Switch back to EV" else "☠ Switch to Ultron",
-                modifier = Modifier.fillMaxWidth(0.7f), accent = Color(0xFFFF2A2A), selected = Ui.mode == "ultron") { switchMode(scope, "ultron") }
-            Row(Modifier.fillMaxWidth(0.9f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                EvButton(if (Ui.mode == "game") "🎮 Leave" else "🎮 Game", modifier = Modifier.weight(1f), accent = Color(0xFF2BFF88), selected = Ui.mode == "game") { switchMode(scope, "game") }
-                EvButton(if (Ui.mode == "karen") "🛡 Leave" else "🛡 Karen", modifier = Modifier.weight(1f), accent = Color(0xFFB26BFF), selected = Ui.mode == "karen") { switchMode(scope, "karen") }
-            }
             Text(if (Ui.jarvis && Ui.coreState == CoreState.IDLE) "MONITORING" else Ui.coreState.label, fontSize = 10.sp, letterSpacing = 2.sp,
                 color = themeColor(Color(Ui.coreState.hex)))
         }

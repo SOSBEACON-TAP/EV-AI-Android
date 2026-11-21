@@ -155,6 +155,7 @@ fun EvRoot() {
                 }
             }
             ModeWheelOverlay()
+            ComposeOverlay()
             EdithOverlay()
             OverdriveOverlay()
             UltronCorruptionOverlay()

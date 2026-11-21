@@ -29,6 +29,8 @@ object Ui {
     var personality by mutableStateOf(Prefs.personality)
     /** The mode wheel is open. */
     var wheel by mutableStateOf(false)
+    /** Which form is open: "whatsapp", "email", "spaces" or "" for none. */
+    var compose by mutableStateOf("")
     /** Overdrive turns the core faster (1 = normal). */
     var boost by mutableStateOf(1f)
 
