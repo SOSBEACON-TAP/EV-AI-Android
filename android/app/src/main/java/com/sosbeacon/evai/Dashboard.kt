@@ -208,6 +208,8 @@ fun ToolsPanel(openScreen: (String) -> Unit) {
         EvButton("✉ Email", accent = red) { Ui.compose = "email" }
         EvButton("🗂 Mission Spaces", accent = red) { Ui.compose = "spaces" }
         EvButton(if (Shield.on) "🛡 Privacy shield: ON" else "🛡 Privacy shield", accent = red) { Shield.toggle() }
+        EvButton("🔒 Lock phone now", accent = red) { PhoneLock.lockNow() }
+        EvButton(if (ContextWatch.on) "🧭 Context: ON" else "🧭 Context: OFF", accent = red) { ContextWatch.toggle() }
         EvButton("📡 Radar", accent = red) { openScreen("radar") }
         EvButton("🎞 Scroll counter", accent = red) { openScreen("scrolls") }
         EvButton("🩺 Error Doctor", accent = red) { openScreen("doctor") }
