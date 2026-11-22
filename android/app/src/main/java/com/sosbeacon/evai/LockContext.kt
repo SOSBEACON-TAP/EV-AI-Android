@@ -18,19 +18,39 @@ class LockAdmin : DeviceAdminReceiver()
 object PhoneLock {
     private fun comp(c: Context) = ComponentName(c, LockAdmin::class.java)
 
+    private fun say(t: String) { Ui.messages.add(Ui.Msg(false, t)) }
+
+    /** Locks the screen. Uses the device-admin permission; if it is not given yet, uses the accessibility service when it is on, else asks for it. */
     fun lockNow() {
         val c = EvApp.ctx
-        val dpm = c.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-        if (dpm.isAdminActive(comp(c))) {
-            dpm.lockNow()
-        } else {
-            Ui.messages.add(Ui.Msg(false, "To lock the phone, allow EV AI as a device admin on the next screen. It can only lock the screen. Then tap Lock phone again."))
+        try {
+            val dpm = c.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            if (dpm.isAdminActive(comp(c))) {
+                dpm.lockNow()
+                return
+            }
+        } catch (e: Exception) {
+            say("The phone refused the lock request (${e.javaClass.simpleName}). Trying another way.")
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            val acc = EvAccess.instance
+            if (acc != null && acc.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)) return
+        }
+        say("To lock the phone, tap Activate on the next screen (EV AI can only lock the screen, nothing else). Then press Lock phone now again.")
+        try {
             c.startActivity(Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
                 .putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, comp(c))
                 .putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "EV AI uses this only to lock your screen when you ask.")
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (e: Exception) {
+            say("This phone would not open the permission screen. Open Settings > Security > Device admin apps, switch on EV AI, then try again.")
+            try { c.startActivity(Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) {}
         }
     }
+
+    fun isReady(): Boolean = try {
+        (EvApp.ctx.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager).isAdminActive(comp(EvApp.ctx))
+    } catch (e: Exception) { false }
 }
 
 /**
