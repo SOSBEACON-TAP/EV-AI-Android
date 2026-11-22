@@ -41,7 +41,7 @@ object Brain {
     var level by mutableStateOf(Prefs.sp.getString("trust_level", "balanced") ?: "balanced")
         private set
 
-    fun setLevel(v: String) { level = v; Prefs.sp.edit().putString("trust_level", v).apply() }
+    fun chooseLevel(v: String) { level = v; Prefs.sp.edit().putString("trust_level", v).apply() }
 
     /** 1 = changes something small, 2 = acts for you or is hard to undo. Tools that ask by themselves are not listed. */
     private val RISK = mapOf(
@@ -184,7 +184,7 @@ fun BrainScreen() {
                 "balanced" to "Balanced: asks before risky actions (forgetting, deleting)",
                 "trusting" to "Trusting: only sending, calling and deleting ask").forEach { (k, t) ->
                 if (Brain.level == k) Button(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text(t, fontSize = 12.sp) }
-                else OutlinedButton(onClick = { Brain.setLevel(k); tick++ }, modifier = Modifier.fillMaxWidth()) { Text(t, fontSize = 12.sp) }
+                else OutlinedButton(onClick = { Brain.chooseLevel(k); tick++ }, modifier = Modifier.fillMaxWidth()) { Text(t, fontSize = 12.sp) }
             }
             Text("Asks first right now: " + (Brain.asksFirst().joinToString(", ") { it.replace('_', ' ') }.ifEmpty { "nothing extra" }), fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
         }
