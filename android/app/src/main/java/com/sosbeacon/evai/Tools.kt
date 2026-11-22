@@ -55,6 +55,7 @@ object Tools {
                 props.put(p[0], JSONObject().put("type", p[1]).put("description", p[2]))
                 if (p.size > 3) req.put(p[0])
             }
+            if (Brain.risky(t.name)) props.put("confirmed", JSONObject().put("type", "boolean").put("description", "True only after the user has explicitly confirmed."))
             val parameters = JSONObject().put("type", "object").put("properties", props).put("required", req)
             arr.put(JSONObject().put("type", "function").put("function",
                 JSONObject().put("name", t.name).put("description", t.desc).put("parameters", parameters)))
@@ -66,9 +67,12 @@ object Tools {
         val t = all.firstOrNull { it.name == name } ?: return "Unknown tool $name"
         if (Ui.mode.isNotEmpty()) return "This mode only chats. Ask EV for that."
         if (Ui.jarvis && name !in JARVIS) return "Jarvis only monitors the phone. Ask EV for that."
-        return try { t.fn(args) } catch (e: SecurityException) {
+        Brain.gate(name, args)?.let { return it }
+        val out = try { t.fn(args) } catch (e: SecurityException) {
             "Permission missing: ${e.message}. Ask the user to allow it in Settings."
         } catch (e: Exception) { "That failed: ${e.message ?: e.javaClass.simpleName}" }
+        Brain.record(name, args, !out.startsWith("That failed") && !out.startsWith("Permission missing"))
+        return out
     }
 
     // ---------------- helpers ----------------
