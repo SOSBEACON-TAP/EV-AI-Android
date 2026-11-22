@@ -66,19 +66,6 @@ object Spaces {
     }
 }
 
-/** Privacy shield: mutes the phone's microphone and stops EV's spoken output. It cannot switch the camera off. */
-object Shield {
-    var on by mutableStateOf(false)
-    fun toggle() {
-        val am = EvApp.ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        on = !on
-        try { @Suppress("DEPRECATION") am.isMicrophoneMute = on } catch (_: Exception) {}
-        if (on) Voice.stop()
-        Ui.messages.add(Ui.Msg(false, if (on) "Privacy shield on: the microphone is muted and I have stopped talking. I cannot switch the camera off, so cover it if you need to. Tap the shield again to unmute."
-                                       else "Privacy shield off: the microphone is unmuted."))
-    }
-}
-
 /** The forms: WhatsApp, Email and Mission Spaces. Pressing Send counts as your confirmation. */
 @Composable
 fun ComposeOverlay() {
@@ -107,10 +94,16 @@ fun ComposeOverlay() {
                         val n = list.getJSONObject(i).getString("name")
                         androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth()) {
                             TextButton(onClick = { close(); Ui.messages.add(Ui.Msg(false, Spaces.start(n))) }) { Text(n.uppercase(), color = tint) }
+                            TextButton(onClick = {
+                                val o = list.getJSONObject(i)
+                                name = n
+                                apps = (0 until o.getJSONArray("apps").length()).joinToString(", ") { k -> o.getJSONArray("apps").getString(k) }
+                                urls = (0 until o.getJSONArray("urls").length()).joinToString(", ") { k -> o.getJSONArray("urls").getString(k) }
+                            }) { Text("edit", fontSize = 11.sp, color = tint) }
                             TextButton(onClick = { Spaces.delete(n); refresh++ }) { Text("delete", fontSize = 11.sp, color = Color(0xFF9FB4CC)) }
                         }
                     }
-                    Text("New space", fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
+                    Text(if (name.isBlank()) "New space" else "Edit space: change it, then save", fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
                     OutlinedTextField(name, { name = it }, label = { Text("Name") }, singleLine = true)
                     OutlinedTextField(apps, { apps = it }, label = { Text("Apps, comma separated") })
                     OutlinedTextField(urls, { urls = it }, label = { Text("Websites, comma separated") })

@@ -86,18 +86,68 @@ fun DrawScope.drawReactor(center: Offset, r: Float, angle: Float, glow: Color, p
     drawPath(tri, Color.White.copy(alpha = 0.8f), style = Stroke(width = 1.4f * k))
 }
 
+/** Jarvis's own arc reactor: clean and precise. Dark glass disc, fine gold ring with ticks, twelve steel coil blocks, a bright core. */
+fun DrawScope.drawJarvisReactor(center: Offset, r: Float, angle: Float, glow: Color, pulse: Float) {
+    val k = r / 120f
+    drawCircle(Brush.radialGradient(listOf(glow.copy(alpha = 0.16f + 0.14f * pulse), Color.Transparent), center = center, radius = 140f * k), 140f * k, center)
+    drawCircle(Brush.radialGradient(listOf(Color(0xFF161C26), Color(0xFF04070C)), center = Offset(center.x, center.y - 20f * k), radius = 130f * k), 116f * k, center)
+    drawCircle(glow.copy(alpha = 0.85f), 116f * k, center, style = Stroke(width = 2.2f * k))
+    for (n in 0 until 72) {
+        val a = Math.toRadians((n * 5 + angle * 0.15f).toDouble())
+        val major = n % 3 == 0
+        val r1 = (if (major) 101f else 105f) * k
+        val r2 = 110f * k
+        drawLine(glow.copy(alpha = if (major) 0.92f else 0.47f),
+            Offset(center.x + (r1 * cos(a)).toFloat(), center.y + (r1 * sin(a)).toFloat()),
+            Offset(center.x + (r2 * cos(a)).toFloat(), center.y + (r2 * sin(a)).toFloat()), strokeWidth = (if (major) 1.6f else 1f) * k)
+    }
+    for (n in 0 until 12) {
+        val a0 = n * 30f - 12f
+        drawArc(Color(0xFF3C4A5C), a0, 24f, false, Offset(center.x - 75f * k, center.y - 75f * k), Size(150f * k, 150f * k), style = Stroke(width = 34f * k))
+        drawArc(Color(0xFF65748A), a0 + 1f, 22f, false, Offset(center.x - 86f * k, center.y - 86f * k), Size(172f * k, 172f * k), style = Stroke(width = 10f * k))
+        drawArc(glow.copy(alpha = 0.6f), a0, 24f, false, Offset(center.x - 92f * k, center.y - 92f * k), Size(184f * k, 184f * k), style = Stroke(width = 1f * k))
+        val m = Math.toRadians((a0 + 12f).toDouble())
+        drawLine(glow.copy(alpha = 0.67f + 0.28f * pulse),
+            Offset(center.x + (70f * k * cos(m)).toFloat(), center.y + (70f * k * sin(m)).toFloat()),
+            Offset(center.x + (80f * k * cos(m)).toFloat(), center.y + (80f * k * sin(m)).toFloat()), strokeWidth = 1.8f * k)
+    }
+    drawCircle(glow.copy(alpha = 0.9f), 52f * k, center, style = Stroke(width = 2f * k))
+    drawCircle(Color.White.copy(alpha = 0.47f), 46f * k, center, style = Stroke(width = 0.8f * k))
+    drawCircle(
+        Brush.radialGradient(listOf(Color.White, Color(0xFFFFF4C8), glow.copy(alpha = 0.8f + 0.2f * pulse), glow.copy(alpha = 0f)), center = center, radius = 46f * k),
+        46f * k, center,
+    )
+    val tri = Path()
+    for (n in 0 until 3) {
+        val a = Math.toRadians((-90 + n * 120 - angle * 0.5f).toDouble())
+        val x = center.x + (26f * k * cos(a)).toFloat()
+        val y = center.y + (26f * k * sin(a)).toFloat()
+        if (n == 0) tri.moveTo(x, y) else tri.lineTo(x, y)
+    }
+    tri.close()
+    drawPath(tri, Color.White.copy(alpha = 0.85f), style = Stroke(width = 1.5f * k))
+}
+
 /** The mode wheel: a ring of chips around the arc reactor. Tap a chip to switch; tap outside to close. */
 @Composable
 fun ModeWheelOverlay() {
     if (!Ui.wheel) return
     var angle by remember { mutableFloatStateOf(0f) }
+    var ringAngle by remember { mutableFloatStateOf(0f) }            // the blue dashes: they turn only while charging
     var pulse by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(Unit) {
         var last = 0L
+        var charging = true
+        var checked = 0L
         while (true) withFrameNanos { t ->
+            if (t - checked > 2_000_000_000L) {
+                checked = t
+                charging = try { (EvApp.ctx.getSystemService(android.content.Context.BATTERY_SERVICE) as android.os.BatteryManager).isCharging } catch (_: Exception) { true }
+            }
             if (last != 0L) {
                 val dt = ((t - last) / 1_000_000_000f).coerceAtMost(0.05f)
                 angle = (angle + 20f * dt) % 360f
+                if (charging) ringAngle = (ringAngle + 20f * dt) % 360f
                 pulse = 0.5f + 0.5f * sin(t / 1_000_000_000f * 2.4f)
             }
             last = t
@@ -112,7 +162,7 @@ fun ModeWheelOverlay() {
                 drawCircle(Color(0xFF10182A), size.minDimension / 2f, c)
                 drawCircle(Color(0xFFA8B0BC), size.minDimension / 2f - 4f, c, style = Stroke(width = 6f))
                 for (n in 0 until 48) {
-                    drawArc(Color(0xFF4678BE), n * 7.5f + angle * 1.6f, 3.2f, false,
+                    drawArc(Color(0xFF4678BE), n * 7.5f + ringAngle * 1.6f, 3.2f, false,
                         Offset(c.x - size.minDimension / 2f + 4f, c.y - size.minDimension / 2f + 4f),
                         Size(size.minDimension - 8f, size.minDimension - 8f), style = Stroke(width = 4f))
                 }

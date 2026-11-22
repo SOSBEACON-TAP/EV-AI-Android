@@ -4,6 +4,9 @@ import android.os.SystemClock
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Path
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.aspectRatio
@@ -112,6 +115,8 @@ fun BodyHud(accent: Color) {
         "right leg" to floatArrayOf(0.52f, 0.565f, 0.71f, 0.98f),
     )
     val ratio = 296f / 604f
+    Column(Modifier.fillMaxWidth()) {
+    EcgStrip(tick)
     Box(Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.TopCenter) {
         Box(Modifier.fillMaxHeight().aspectRatio(ratio).pointerInput(Unit) {
             detectTapGestures { p ->
@@ -137,6 +142,20 @@ fun BodyHud(accent: Color) {
                     drawRoundRect(Color(0xE696D7FF), Offset(r[0] * size.width, r[1] * size.height),
                         Size((r[2] - r[0]) * size.width, (r[3] - r[1]) * size.height), androidx.compose.ui.geometry.CornerRadius(14f), style = Stroke(2f))
                 }
+                // a small red heart in the chest, beating
+                val ph = (ms % 1100L) / 1100f
+                val beat = maxOf(Math.exp(-Math.pow(((ph - 0.08f) / 0.05f).toDouble(), 2.0)), 0.7 * Math.exp(-Math.pow(((ph - 0.26f) / 0.06f).toDouble(), 2.0))).toFloat()
+                val hc = Offset(0.545f * size.width, 0.285f * size.height)
+                val hs = size.width * 0.062f * (1f + 0.16f * beat)
+                drawCircle(Brush.radialGradient(listOf(Color(0xFFFF3C46).copy(alpha = 0.47f + 0.39f * beat), Color.Transparent), center = hc, radius = hs * 2.6f), hs * 2.6f, hc)
+                val heart = Path().apply {
+                    moveTo(hc.x, hc.y + hs * 0.95f)
+                    cubicTo(hc.x - hs * 1.6f, hc.y - hs * 0.1f, hc.x - hs * 0.9f, hc.y - hs * 1.2f, hc.x, hc.y - hs * 0.35f)
+                    cubicTo(hc.x + hs * 0.9f, hc.y - hs * 1.2f, hc.x + hs * 1.6f, hc.y - hs * 0.1f, hc.x, hc.y + hs * 0.95f)
+                    close()
+                }
+                drawPath(heart, Brush.radialGradient(listOf(Color(0xFFFF8C96), Color(0xFFE11E37)), center = Offset(hc.x - hs * 0.3f, hc.y - hs * 0.3f), radius = hs * 1.8f))
+                drawPath(heart, Color(0xC8FFBEC3), style = Stroke(width = 1.5f))
                 val y = ((ms % 3500L) / 3500f) * size.height
                 drawRect(Brush.verticalGradient(listOf(Color(0x0078C8FF), Color(0x6E96D7FF), Color(0x0078C8FF)), startY = y - 28f, endY = y + 28f),
                     Offset(0f, y - 28f), Size(size.width, 56f))
@@ -144,5 +163,34 @@ fun BodyHud(accent: Color) {
         }
         Text(if (picked.isEmpty()) "TOUCH WHERE YOU FEEL SOMETHING" else picked.uppercase(), fontSize = 8.sp, letterSpacing = 1.sp, color = accent,
             modifier = Modifier.align(Alignment.TopCenter))
+    }
+    }
+}
+
+/** A glowing red heartbeat line scrolling left, like a hospital monitor. An illustration, not a measurement. */
+@Composable
+fun EcgStrip(tick: Long) {
+    androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().height(86.dp).background(Color(0xFF040204))) {
+        Canvas(Modifier.fillMaxSize()) {
+            val t = (tick / 1_000_000L) / 1000f
+            val steps = (size.width / 3f).toInt().coerceAtLeast(40)
+            val mid = size.height * 0.58f
+            val amp = size.height * 0.36f
+            fun beat(x: Float): Float {
+                fun bump(c: Float, w: Float, a: Float) = a * Math.exp(-Math.pow(((x - c) / w).toDouble(), 2.0)).toFloat()
+                return bump(0.16f, 0.035f, 0.18f) + bump(0.30f, 0.012f, -0.20f) + bump(0.335f, 0.014f, 1.0f) + bump(0.37f, 0.014f, -0.42f) + bump(0.58f, 0.05f, 0.30f)
+            }
+            val path = Path()
+            for (i in 0..steps) {
+                val fx = i / steps.toFloat()
+                val beats = fx * 2.6f + t / 1.1f
+                val y = mid - beat(beats % 1f) * amp
+                if (i == 0) path.moveTo(0f, y) else path.lineTo(fx * size.width, y)
+            }
+            drawPath(path, Color(0x1CFF2832), style = Stroke(width = 18f, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+            drawPath(path, Color(0x3CFF2832), style = Stroke(width = 10f, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+            drawPath(path, Color(0xFFFF7878), style = Stroke(width = 4f, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+        }
+        Text("HEARTBEAT (illustration, not a measurement)", fontSize = 7.sp, color = Color(0xAAFF7878), modifier = Modifier.padding(6.dp))
     }
 }

@@ -65,7 +65,8 @@ fun AiCore(modifier: Modifier = Modifier) {
             with(Faces) { drawFace(fk, bmp, cx, cy, radius, accent, angle, phase, state, System.nanoTime() / 1_000_000_000f) }
         } else {
             if (mode == null && !jarvis) drawEvOrb(center, radius, angle, phase, accent, red, blue)   // EV keeps its own red and blue core
-            else drawReactor(center, radius, angle, accent, pulse)                                       // modes and Jarvis use the arc reactor
+            else if (jarvis && mode == null) drawJarvisReactor(center, radius, angle, accent, pulse)     // Jarvis has its own cleaner reactor
+            else drawReactor(center, radius, angle, accent, pulse)                                       // the other modes use the arc reactor
         }
     }
 }
