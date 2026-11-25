@@ -23,6 +23,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.draw.rotate
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,7 +74,10 @@ fun LaunchSplash(onDone: () -> Unit) {
     val accent = Ui.accentColor()
     Box(Modifier.fillMaxSize().background(Color(0xFF05060A)), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
-            Image(painterResource(R.drawable.ev_logo), null, Modifier.size(96.dp))
+            val spin = androidx.compose.animation.core.rememberInfiniteTransition()
+            val turn by spin.animateFloat(0f, 360f, androidx.compose.animation.core.infiniteRepeatable(
+                androidx.compose.animation.core.tween(9000, easing = androidx.compose.animation.core.LinearEasing)))
+            Image(painterResource(R.drawable.ev_logo), null, Modifier.size(96.dp).rotate(turn))      // the EV ring turns while it loads
             Spacer(Modifier.height(28.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 val on = (p * 20).toInt()

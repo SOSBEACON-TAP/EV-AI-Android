@@ -206,6 +206,8 @@ fun ToolsPanel(openScreen: (String) -> Unit) {
         EvButton("💻 Computer", accent = red) { openScreen("computer") }
         EvButton("💬 WhatsApp", accent = red) { Ui.compose = "whatsapp" }
         EvButton("✉ Email", accent = red) { Ui.compose = "email" }
+        EvButton("📞 Call", accent = red) { Ui.compose = "call" }
+        EvButton("👥 Saved contacts", accent = red) { Ui.compose = "contacts" }
         EvButton("🗂 Mission Spaces", accent = red) { Ui.compose = "spaces" }
         EvButton("🧠 EV Brain", accent = red) { openScreen("brain") }
         EvButton("📡 Radar", accent = red) { openScreen("radar") }

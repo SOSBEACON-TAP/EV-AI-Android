@@ -123,6 +123,28 @@ object Tools {
         return null
     }
 
+    fun canReadContacts() = has(android.Manifest.permission.READ_CONTACTS)
+
+    /** The phone's contacts (name to number), A to Z, optionally filtered by a search word. */
+    fun listContacts(query: String, max: Int = 60): List<Pair<String, String>> {
+        if (!canReadContacts()) return emptyList()
+        val q = query.trim()
+        val out = LinkedHashMap<String, String>()
+        ctx.contentResolver.query(
+            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            arrayOf(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME, ContactsContract.CommonDataKinds.Phone.NUMBER),
+            if (q.isEmpty()) null else "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ?",
+            if (q.isEmpty()) null else arrayOf("%$q%"),
+            "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} COLLATE NOCASE ASC"
+        )?.use { c ->
+            while (c.moveToNext() && out.size < max) {
+                val n = c.getString(0) ?: continue
+                if (n !in out) out[n] = c.getString(1) ?: ""
+            }
+        }
+        return out.toList()
+    }
+
     private fun needConfirm(a: JSONObject, what: String): String? =
         if (Prefs.confirmSend && !a.optBoolean("confirmed")) "Ask the user to confirm first: $what" else null
 
@@ -175,8 +197,15 @@ object Tools {
             val r = resolveNumber(a.getString("to")) ?: return@def "I couldn't find ${a.getString("to")} in your contacts."
             var num = r.second.filter { it.isDigit() }
             if (num.length == 10) num = "91$num"
-            val i = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$num?text=${enc(a.getString("message"))}")).setPackage("com.whatsapp")
-            try { EvAccess.armAutoSend("com.whatsapp"); go(i) } catch (e: Exception) { return@def "WhatsApp isn't installed." }
+            val link = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$num?text=${enc(a.getString("message"))}"))
+            var app = ""
+            for (pkg in listOf("com.whatsapp", "com.whatsapp.w4b")) {          // WhatsApp, then WhatsApp Business
+                try { EvAccess.armAutoSend(pkg); go(Intent(link).setPackage(pkg)); app = pkg; break } catch (e: Exception) { }
+            }
+            if (app.isEmpty()) {          // no WhatsApp app: use WhatsApp Web in the browser instead of asking to install it
+                try { go(Intent(link)) } catch (e: Exception) { return@def "I couldn't open WhatsApp or a browser." }
+                return@def "WhatsApp isn't installed, so I opened WhatsApp Web in your browser for ${r.first}. Log in with the QR code if it asks, then press Send."
+            }
             if (EvAccess.enabled(ctx)) "Sending the WhatsApp message to ${r.first}."
             else "WhatsApp is open with the message ready for ${r.first}. Turn on EV AI in Accessibility settings and I'll press Send for you."
         }

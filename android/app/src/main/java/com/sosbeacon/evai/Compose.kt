@@ -3,6 +3,7 @@ package com.sosbeacon.evai
 import android.content.Context
 import android.media.AudioManager
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -13,6 +14,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -72,14 +75,14 @@ fun ComposeOverlay() {
     val kind = Ui.compose
     if (kind.isEmpty()) return
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    var to by remember(kind) { mutableStateOf("") }
+    var to by remember(kind) { mutableStateOf(Ui.composeTo) }
     var subject by remember(kind) { mutableStateOf("") }
     var body by remember(kind) { mutableStateOf("") }
     var name by remember(kind) { mutableStateOf("") }
     var apps by remember(kind) { mutableStateOf("") }
     var urls by remember(kind) { mutableStateOf("") }
     var refresh by remember { mutableStateOf(0) }
-    val close = { Ui.compose = "" }
+    val close = { Ui.compose = ""; Ui.composeTo = "" }
     val tint = Color(0xFF5AA0E6)
 
     if (kind == "spaces") {
@@ -113,6 +116,63 @@ fun ComposeOverlay() {
                             name = ""; apps = ""; urls = ""; refresh++
                         }
                     }) { Text("SAVE SPACE", color = tint) }
+                }
+            },
+            confirmButton = { TextButton(onClick = { close() }) { Text("Close") } },
+        )
+        return
+    }
+
+    if (kind == "call") {
+        AlertDialog(
+            onDismissRequest = { close() },
+            title = { Text("CALL SOMEONE", fontSize = 14.sp) },
+            text = {
+                Column {
+                    OutlinedTextField(to, { to = it }, label = { Text("A contact name or a phone number") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Text("Your phone starts the call. If asked, allow the Phone permission.", fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (to.isBlank()) return@TextButton
+                    val who = to.trim()
+                    close()
+                    scope.launch(Dispatchers.IO) { Ui.messages.add(Ui.Msg(false, Tools.run("call_contact", JSONObject().put("to", who)))) }
+                }) { Text("CALL", color = tint) }
+            },
+            dismissButton = { TextButton(onClick = { close() }) { Text("Cancel") } },
+        )
+        return
+    }
+
+    if (kind == "contacts") {
+        var q by remember { mutableStateOf("") }
+        var list by remember { mutableStateOf(listOf<Pair<String, String>>()) }
+        LaunchedEffect(q) { list = withContext(Dispatchers.IO) { Tools.listContacts(q) } }
+        AlertDialog(
+            onDismissRequest = { close() },
+            title = { Text("SAVED CONTACTS", fontSize = 14.sp) },
+            text = {
+                Column(Modifier.heightIn(max = 440.dp)) {
+                    OutlinedTextField(q, { q = it }, label = { Text("Search") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    if (!Tools.canReadContacts()) Text("Allow the Contacts permission for EV AI in Settings to see your contacts here.", fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                    else if (list.isEmpty()) Text("No contacts found.", fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        for ((name, number) in list) {
+                            Column(Modifier.padding(top = 8.dp)) {
+                                Text(name, fontSize = 14.sp)
+                                Text(number, fontSize = 11.sp, color = Color(0xFF9FB4CC))
+                                Row {
+                                    TextButton(onClick = {
+                                        close()
+                                        scope.launch(Dispatchers.IO) { Ui.messages.add(Ui.Msg(false, Tools.run("call_contact", JSONObject().put("to", number)))) }
+                                    }) { Text("Call", color = tint, fontSize = 12.sp) }
+                                    TextButton(onClick = { Ui.composeTo = number; Ui.compose = "whatsapp" }) { Text("WhatsApp", color = tint, fontSize = 12.sp) }
+                                }
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = { TextButton(onClick = { close() }) { Text("Close") } },

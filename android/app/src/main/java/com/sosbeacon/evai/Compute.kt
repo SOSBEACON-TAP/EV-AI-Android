@@ -274,6 +274,20 @@ fun ComputeSection() {
                         OutlinedTextField(link, { link = it }, label = { Text("Open a link on the computer") }, singleLine = true, modifier = Modifier.weight(1f))
                         Button(onClick = { if (link.isNotBlank()) { c.send("url", JSONObject().put("url", link.trim())); link = "" } }) { Text("Open") }
                     }
+                    Text("Keys and scrolling", Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        for ((t, k) in listOf("←" to "left", "↑" to "up", "↓" to "down", "→" to "right"))
+                            OutlinedButton(onClick = { c.send("key", JSONObject().put("name", k)) }, contentPadding = PaddingValues(horizontal = 4.dp), modifier = Modifier.weight(1f)) { Text(t, fontSize = 15.sp) }
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        for ((t, k) in listOf("Esc" to "esc", "Tab" to "tab", "Back" to "backspace", "Del" to "delete"))
+                            OutlinedButton(onClick = { c.send("key", JSONObject().put("name", k)) }, contentPadding = PaddingValues(horizontal = 4.dp), modifier = Modifier.weight(1f)) { Text(t, fontSize = 12.sp, maxLines = 1) }
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        OutlinedButton(onClick = { c.send("scroll", JSONObject().put("dy", 6)) }, modifier = Modifier.weight(1f)) { Text("Scroll up", fontSize = 12.sp) }
+                        OutlinedButton(onClick = { c.send("scroll", JSONObject().put("dy", -6)) }, modifier = Modifier.weight(1f)) { Text("Scroll down", fontSize = 12.sp) }
+                        OutlinedButton(onClick = { c.send("status") }, modifier = Modifier.weight(1f)) { Text("Status", fontSize = 12.sp) }
+                    }
                     var confirm by remember { mutableStateOf("") }
                     Text("Power", Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

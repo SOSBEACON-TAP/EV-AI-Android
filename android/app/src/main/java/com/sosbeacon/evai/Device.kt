@@ -8,6 +8,7 @@ import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.os.Build
@@ -121,7 +122,30 @@ object Ringer {
 object IncomingCall {
     private const val CHANNEL = "evai_call"
 
+    /** The computer asked this phone to call someone ("CALL:number|name"). Nothing is dialled until you tap the green button. */
+    private fun showDial(c: Context, payload: String) {
+        val number = payload.substringBefore('|').filter { it.isDigit() || it == '+' }.take(20)
+        val name = payload.substringAfter('|', "").trim().take(40)
+        if (number.isEmpty()) return
+        val nm = c.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.createNotificationChannel(NotificationChannel("evai_dial", "EV wants to call someone", NotificationManager.IMPORTANCE_HIGH))
+        val dial = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val pi = PendingIntent.getActivity(c, 8, dial, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val who = name.ifEmpty { number }
+        val n = Notification.Builder(c, "evai_dial")
+            .setSmallIcon(android.R.drawable.sym_action_call)
+            .setContentTitle("EV wants to call $who")
+            .setContentText("Tap to open the dialer, then press the green call button.")
+            .setCategory(Notification.CATEGORY_CALL)
+            .setAutoCancel(true)
+            .setContentIntent(pi)
+            .setFullScreenIntent(pi, true)
+            .build()
+        try { nm.notify(901, n) } catch (e: SecurityException) { }
+    }
+
     fun show(c: Context, rawMessage: String) {
+        if (rawMessage.startsWith("CALL:")) { showDial(c, rawMessage.removePrefix("CALL:")); return }
         val loud = rawMessage.startsWith("FIND:")
         val message = rawMessage.removePrefix("FIND:")
         val nm = c.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -229,6 +253,7 @@ class CallService : Service() {
                     val ageSeconds = System.currentTimeMillis() / 1000 - t
                     if (t > 0 && ageSeconds > 900) continue   // ignore old calls
                     val msg = j.optString("message", "Your computer needs you.")
+                    if (msg.startsWith("CALL:") && t > 0 && ageSeconds > 120) continue   // a call request that old is stale: never pop it up later
                     Handler(Looper.getMainLooper()).post { IncomingCall.show(applicationContext, msg) }
                 }
             }
