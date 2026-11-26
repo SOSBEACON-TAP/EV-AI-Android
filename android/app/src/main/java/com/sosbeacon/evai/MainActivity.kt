@@ -23,6 +23,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.draw.rotate
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
